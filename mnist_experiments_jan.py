@@ -61,15 +61,12 @@ class UNetSmall(nn.Module):
             nn.Linear(time_emb_dim, time_emb_dim)
         )
 
-        # Encoder
         self.enc1 = ConvBlock(in_ch, base_ch)
         self.enc2 = ConvBlock(base_ch, base_ch * 2)
         self.pool = nn.AvgPool2d(2)
 
-        # Bottleneck
         self.bottleneck = ConvBlock(base_ch * 2, base_ch * 4)
 
-        # Decoder
         self.up = nn.Upsample(scale_factor=2, mode='nearest')
         self.dec1 = ConvBlock(base_ch * 4 + base_ch * 2, base_ch * 2)
         self.dec2 = ConvBlock(base_ch * 2 + base_ch, base_ch)
@@ -82,17 +79,13 @@ class UNetSmall(nn.Module):
         # Embed time and add it as conditioning
         t_emb = self.time_mlp(t.view(-1, 1))
         t_emb = t_emb[:, :, None, None]  # reshape to [batch, time_emb_dim, 1, 1]
-        # Rescale to match input channel dimension for addition
         t_emb_scaled = t_emb / (t_emb.abs().max() + 1e-8) * 0.1  # scaled down
 
-        # Encoder
         e1 = self.enc1(x)  # process image normally
         e2 = self.enc2(self.pool(e1))
 
-        # Bottleneck
         b = self.bottleneck(self.pool(e2))
 
-        # Decoder
         d1 = self.dec1(torch.cat([self.up(b), e2], dim=1))
         d2 = self.dec2(torch.cat([self.up(d1), e1], dim=1))
         out = self.out(d2)
@@ -122,7 +115,6 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
             pure_noise_images = torch.randn(X_batch.shape).to(device)
             interpolated_images = time * X_batch + (1 - time) * pure_noise_images
 
-            # Flow matching: predict the velocity (data - noise)
             velocity_target = X_batch - pure_noise_images
             
             predicted_velocity = model(interpolated_images, time)
@@ -146,7 +138,6 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
                 pure_noise_test_images = torch.randn(X_test_batch.shape).to(device)
                 interpolated_test_images = time_test * X_test_batch + (1 - time_test) * pure_noise_test_images
 
-                # Flow matching: predict the velocity
                 velocity_target_test = X_test_batch - pure_noise_test_images
                 predicted_velocity_test = model(interpolated_test_images, time_test)
                 test_loss = loss_function(predicted_velocity_test, velocity_target_test)
@@ -169,16 +160,12 @@ def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu')
     model.to(device)
     model.eval()
     with torch.no_grad():
-        # Start from pure noise at t=0
         generated_images = torch.randn(num_samples, 28, 28).to(device)
         dt = 1.0 / number_of_steps
         
-        # Integrate from t=0 to t=1 (noise to data)
         for step in range(number_of_steps):
             time = torch.full((num_samples, 1, 1), step / number_of_steps).to(device)
-            # Predict velocity at current position
             velocity = model(generated_images, time)
-            # Euler integration: move along the flow
             generated_images = generated_images + velocity * dt
     model.to('cpu')
     return generated_images.to('cpu')
