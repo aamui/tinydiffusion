@@ -99,12 +99,12 @@ class UNetSmall(nn.Module):
         return out.reshape(-1, 28, 28)
 
 
-def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, device='cpu'):
+def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, device='cpu', batch_size=32):
     model.to(device)
     if use_wandb:
         wandb.init(project="mnist-diffusion", name="unet-small-mse-loss")
-    train_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_train.to(device), y_train.to(device)), batch_size=32, shuffle=True)
-    test_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_test.to(device), y_test.to(device)), batch_size=32, shuffle=False)
+    train_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_train.to(device), y_train.to(device)), batch_size=batch_size, shuffle=True)
+    test_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_test.to(device), y_test.to(device)), batch_size=batch_size, shuffle=False)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=2e-5)
 
@@ -122,8 +122,11 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
             pure_noise_images = torch.randn(X_batch.shape).to(device)
             interpolated_images = time * X_batch + (1 - time) * pure_noise_images
 
-            predicted_output = model(interpolated_images, time)
-            loss = loss_function(predicted_output, X_batch)
+            # Flow matching: predict the velocity (data - noise)
+            velocity_target = X_batch - pure_noise_images
+            
+            predicted_velocity = model(interpolated_images, time)
+            loss = loss_function(predicted_velocity, velocity_target)
             losses.append(loss.item())
             if use_wandb:
                 wandb.log({"train_loss": loss.item()})
@@ -142,11 +145,18 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
                 time_test = torch.rand(X_test_batch.shape[0]).reshape(-1, 1, 1).to(device)
                 pure_noise_test_images = torch.randn(X_test_batch.shape).to(device)
                 interpolated_test_images = time_test * X_test_batch + (1 - time_test) * pure_noise_test_images
-                predicted_test_output = model(interpolated_test_images, time_test)
-                test_loss = loss_function(predicted_test_output, X_test_batch)
+
+                # Flow matching: predict the velocity
+                velocity_target_test = X_test_batch - pure_noise_test_images
+                predicted_velocity_test = model(interpolated_test_images, time_test)
+                test_loss = loss_function(predicted_velocity_test, velocity_target_test)
                 losses.append(test_loss.item())
             avg_test_loss = sum(losses) / len(losses)
             print(f"After Epoch {epoch+1}, Test Loss: {avg_test_loss}")
+
+
+        if use_wandb:
+            wandb.log({"avg_train_loss_epoch": avg_train_loss, "avg_test_loss_epoch": avg_test_loss})
 
 
     if use_wandb:
@@ -155,15 +165,21 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
     model.to('cpu')
 
 
-def generate_with_model(model, num_samples=5, number_of_steps=1000, device='cpu'):
+def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu'):
     model.to(device)
     model.eval()
     with torch.no_grad():
+        # Start from pure noise at t=0
         generated_images = torch.randn(num_samples, 28, 28).to(device)
-        for step in range(number_of_steps, 0, -1):
+        dt = 1.0 / number_of_steps
+        
+        # Integrate from t=0 to t=1 (noise to data)
+        for step in range(number_of_steps):
             time = torch.full((num_samples, 1, 1), step / number_of_steps).to(device)
-            predicted_noise = model(generated_images, time)
-            generated_images = generated_images - predicted_noise * (1.0 / number_of_steps)
+            # Predict velocity at current position
+            velocity = model(generated_images, time)
+            # Euler integration: move along the flow
+            generated_images = generated_images + velocity * dt
     model.to('cpu')
     return generated_images.to('cpu')
 
@@ -172,6 +188,6 @@ if __name__ == "__main__":
     (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
     visualize_n_samples(X_train, y_train, n=5)
     model = UNetSmall()
-    train_model(model, X_train, y_train, X_test, y_test, num_epochs=20, use_wandb=True, device='mps')
+    train_model(model, X_train, y_train, X_test, y_test, num_epochs=20, use_wandb=True, device='mps', batch_size=512)
     generated_images = generate_with_model(model)
     visualize_n_samples(generated_images, n=5)
