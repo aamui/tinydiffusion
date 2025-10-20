@@ -4,7 +4,7 @@ import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import wandb
-
+from tqdm import tqdm
 
 def load_mnist_datasets():
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
@@ -99,8 +99,9 @@ class UNetSmall(nn.Module):
         return out.reshape(-1, 28, 28)
 
 
-def train_model(model, X_train, y_train, X_test, y_test, num_epochs=10):
-    wandb.init(project="mnist-diffusion", name="unet-small-mse-loss")
+def train_model(model, X_train, y_train, X_test, y_test, num_epochs=10, use_wandb=True):
+    if use_wandb:
+        wandb.init(project="mnist-diffusion", name="unet-small-mse-loss")
     train_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_train, y_train), batch_size=32, shuffle=True)
     test_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_test, y_test), batch_size=32, shuffle=False)
 
@@ -108,20 +109,21 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=10):
 
     loss_function = nn.MSELoss()
 
-    for epoch in range(num_epochs):
+    for epoch in tqdm(range(num_epochs)):
         print(f"Running epoch {epoch+1}/{num_epochs}")
-        for X_batch, y_batch in train_data_loader:
+        for X_batch, y_batch in tqdm(train_data_loader):
             model.train()
             optimizer.zero_grad()
 
-            time = torch.rand(X_batch.shape[0])
+            time = torch.rand(X_batch.shape[0]).reshape(-1, 1, 1)
 
             pure_noise_images = torch.randn(X_batch.shape)
             interpolated_images = time * X_batch + (1 - time) * pure_noise_images
 
             predicted_output = model(interpolated_images, time)
-            loss = loss_function(predicted_output, y_batch)
-            wandb.log({"train_loss": loss.item()})
+            loss = loss_function(predicted_output, X_batch)
+            if use_wandb:
+                wandb.log({"train_loss": loss.item()})
             loss.backward()
 
             optimizer.step()
@@ -130,21 +132,21 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=10):
             with torch.no_grad():
                 next_test_batch = next(iter(test_data_loader))
                 X_test_batch, y_test_batch = next_test_batch
-                time_test = torch.rand(X_test_batch.shape[0])
+                time_test = torch.rand(X_test_batch.shape[0]).reshape(-1, 1, 1)
                 pure_noise_test_images = torch.randn(X_test_batch.shape)
                 interpolated_test_images = time_test * X_test_batch + (1 - time_test) * pure_noise_test_images
                 predicted_test_output = model(interpolated_test_images, time_test)
-                test_loss = loss_function(predicted_test_output, y_test_batch)
+                test_loss = loss_function(predicted_test_output, X_test_batch)
 
-            wandb.log({"train_loss": loss.item(), "test_loss": test_loss.item()})
-            
-    wandb.finish()
+            if use_wandb:
+                wandb.log({"train_loss": loss.item(), "test_loss": test_loss.item()})
+
+    if use_wandb:
+        wandb.finish()
 
 
 if __name__ == "__main__":
     (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
     # visualize_n_samples(X_train, y_train, n=5)
     model = UNetSmall()
-    # Add channel dimension: [batch, height, width] -> [batch, channels, height, width]
-    output = model(X_train[:20], torch.tensor([0.5]))
-    print(f"Model output shape: {output.shape}")
+    train_model(model, X_train, y_train, X_test, y_test, num_epochs=10, use_wandb=False)
