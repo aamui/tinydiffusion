@@ -77,6 +77,7 @@ class UNetSmall(nn.Module):
         self.out = nn.Conv2d(base_ch, in_ch, 1)
 
     def forward(self, x, t):
+        x = x.unsqueeze(1)  # Ensure input has channel dimension
         # Embed time and add it as conditioning
         t_emb = self.time_mlp(t.view(-1, 1))
         t_emb = t_emb[:, :, None, None]  # reshape to [batch, time_emb_dim, 1, 1]
@@ -94,7 +95,7 @@ class UNetSmall(nn.Module):
         d1 = self.dec1(torch.cat([self.up(b), e2], dim=1))
         d2 = self.dec2(torch.cat([self.up(d1), e1], dim=1))
         out = self.out(d2)
-        return out
+        return out.reshape(-1, 28, 28)
 
 
 
@@ -103,5 +104,5 @@ if __name__ == "__main__":
     # visualize_n_samples(X_train, y_train, n=5)
     model = UNetSmall()
     # Add channel dimension: [batch, height, width] -> [batch, channels, height, width]
-    output = model(X_train[:1].unsqueeze(1), torch.tensor([0.5]))
+    output = model(X_train[:20], torch.tensor([0.5]))
     print(f"Model output shape: {output.shape}")
