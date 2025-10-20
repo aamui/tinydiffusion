@@ -79,14 +79,16 @@ class UNetSmall(nn.Module):
     def forward(self, x, t):
         # Embed time and add it as conditioning
         t_emb = self.time_mlp(t.view(-1, 1))
-        t_emb = t_emb[:, :, None, None]  # broadcast
+        t_emb = t_emb[:, :, None, None]  # reshape to [batch, time_emb_dim, 1, 1]
+        # Rescale to match input channel dimension for addition
+        t_emb_scaled = t_emb / (t_emb.abs().max() + 1e-8) * 0.1  # scaled down
 
         # Encoder
-        e1 = self.enc1(x + 0*t_emb)  # optionally modulate with t_emb
-        e2 = self.enc2(self.pool(e1) + 0*t_emb)
+        e1 = self.enc1(x)  # process image normally
+        e2 = self.enc2(self.pool(e1))
 
         # Bottleneck
-        b = self.bottleneck(self.pool(e2) + 0*t_emb)
+        b = self.bottleneck(self.pool(e2))
 
         # Decoder
         d1 = self.dec1(torch.cat([self.up(b), e2], dim=1))
@@ -100,5 +102,6 @@ if __name__ == "__main__":
     (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
     # visualize_n_samples(X_train, y_train, n=5)
     model = UNetSmall()
-    output = model(X_train[:1], torch.tensor([0.5]))
+    # Add channel dimension: [batch, height, width] -> [batch, channels, height, width]
+    output = model(X_train[:1].unsqueeze(1), torch.tensor([0.5]))
     print(f"Model output shape: {output.shape}")
