@@ -22,11 +22,11 @@ def load_mnist_datasets():
     return (X_train, y_train), (X_test, y_test)
 
 
-def visualize_n_samples(X_train, y_train, n=5):
+def visualize_n_samples(X_train, y_train=None, n=5):
     fig, axes = plt.subplots(1, 5, figsize=(15, 3))
     for i in range(5):
         image = X_train[i]
-        label = y_train[i]
+        label = y_train[i] if y_train is not None else "Unknown"
         axes[i].imshow(image.squeeze(), cmap='gray')
         axes[i].set_title(f'Label: {label}')
         axes[i].axis('off')
@@ -99,54 +99,79 @@ class UNetSmall(nn.Module):
         return out.reshape(-1, 28, 28)
 
 
-def train_model(model, X_train, y_train, X_test, y_test, num_epochs=10, use_wandb=True):
+def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, device='cpu'):
+    model.to(device)
     if use_wandb:
         wandb.init(project="mnist-diffusion", name="unet-small-mse-loss")
-    train_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_train, y_train), batch_size=32, shuffle=True)
-    test_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_test, y_test), batch_size=32, shuffle=False)
+    train_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_train.to(device), y_train.to(device)), batch_size=32, shuffle=True)
+    test_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_test.to(device), y_test.to(device)), batch_size=32, shuffle=False)
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-5)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=2e-5)
 
     loss_function = nn.MSELoss()
 
     for epoch in tqdm(range(num_epochs)):
         print(f"Running epoch {epoch+1}/{num_epochs}")
+        model.train()
+        losses = []
         for X_batch, y_batch in tqdm(train_data_loader):
-            model.train()
             optimizer.zero_grad()
 
-            time = torch.rand(X_batch.shape[0]).reshape(-1, 1, 1)
+            time = torch.rand(X_batch.shape[0]).reshape(-1, 1, 1).to(device)
 
-            pure_noise_images = torch.randn(X_batch.shape)
+            pure_noise_images = torch.randn(X_batch.shape).to(device)
             interpolated_images = time * X_batch + (1 - time) * pure_noise_images
 
             predicted_output = model(interpolated_images, time)
             loss = loss_function(predicted_output, X_batch)
+            losses.append(loss.item())
             if use_wandb:
                 wandb.log({"train_loss": loss.item()})
             loss.backward()
 
             optimizer.step()
 
-            model.eval()
-            with torch.no_grad():
-                next_test_batch = next(iter(test_data_loader))
+        avg_train_loss = sum(losses) / len(losses)
+        print(f"Epoch {epoch+1}, Train Loss: {avg_train_loss}")
+
+        model.eval()
+        with torch.no_grad():
+            losses = []
+            for next_test_batch in test_data_loader:
                 X_test_batch, y_test_batch = next_test_batch
-                time_test = torch.rand(X_test_batch.shape[0]).reshape(-1, 1, 1)
-                pure_noise_test_images = torch.randn(X_test_batch.shape)
+                time_test = torch.rand(X_test_batch.shape[0]).reshape(-1, 1, 1).to(device)
+                pure_noise_test_images = torch.randn(X_test_batch.shape).to(device)
                 interpolated_test_images = time_test * X_test_batch + (1 - time_test) * pure_noise_test_images
                 predicted_test_output = model(interpolated_test_images, time_test)
                 test_loss = loss_function(predicted_test_output, X_test_batch)
+                losses.append(test_loss.item())
+            avg_test_loss = sum(losses) / len(losses)
+            print(f"After Epoch {epoch+1}, Test Loss: {avg_test_loss}")
 
-            if use_wandb:
-                wandb.log({"train_loss": loss.item(), "test_loss": test_loss.item()})
 
     if use_wandb:
         wandb.finish()
 
+    model.to('cpu')
+
+
+def generate_with_model(model, num_samples=5, number_of_steps=1000, device='cpu'):
+    model.to(device)
+    model.eval()
+    with torch.no_grad():
+        generated_images = torch.randn(num_samples, 28, 28).to(device)
+        for step in range(number_of_steps, 0, -1):
+            time = torch.full((num_samples, 1, 1), step / number_of_steps).to(device)
+            predicted_noise = model(generated_images, time)
+            generated_images = generated_images - predicted_noise * (1.0 / number_of_steps)
+    model.to('cpu')
+    return generated_images.to('cpu')
+
 
 if __name__ == "__main__":
     (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
-    # visualize_n_samples(X_train, y_train, n=5)
+    visualize_n_samples(X_train, y_train, n=5)
     model = UNetSmall()
-    train_model(model, X_train, y_train, X_test, y_test, num_epochs=10, use_wandb=False)
+    train_model(model, X_train, y_train, X_test, y_test, num_epochs=20, use_wandb=True, device='mps')
+    generated_images = generate_with_model(model)
+    visualize_n_samples(generated_images, n=5)
