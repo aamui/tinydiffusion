@@ -3,6 +3,7 @@ import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+import wandb
 
 
 def load_mnist_datasets():
@@ -97,6 +98,47 @@ class UNetSmall(nn.Module):
         out = self.out(d2)
         return out.reshape(-1, 28, 28)
 
+
+def train_model(model, X_train, y_train, X_test, y_test, num_epochs=10):
+    wandb.init(project="mnist-diffusion", name="unet-small-mse-loss")
+    train_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_train, y_train), batch_size=32, shuffle=True)
+    test_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_test, y_test), batch_size=32, shuffle=False)
+
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4, weight_decay=1e-5)
+
+    loss_function = nn.MSELoss()
+
+    for epoch in range(num_epochs):
+        print(f"Running epoch {epoch+1}/{num_epochs}")
+        for X_batch, y_batch in train_data_loader:
+            model.train()
+            optimizer.zero_grad()
+
+            time = torch.rand(X_batch.shape[0])
+
+            pure_noise_images = torch.randn(X_batch.shape)
+            interpolated_images = time * X_batch + (1 - time) * pure_noise_images
+
+            predicted_output = model(interpolated_images, time)
+            loss = loss_function(predicted_output, y_batch)
+            wandb.log({"train_loss": loss.item()})
+            loss.backward()
+
+            optimizer.step()
+
+            model.eval()
+            with torch.no_grad():
+                next_test_batch = next(iter(test_data_loader))
+                X_test_batch, y_test_batch = next_test_batch
+                time_test = torch.rand(X_test_batch.shape[0])
+                pure_noise_test_images = torch.randn(X_test_batch.shape)
+                interpolated_test_images = time_test * X_test_batch + (1 - time_test) * pure_noise_test_images
+                predicted_test_output = model(interpolated_test_images, time_test)
+                test_loss = loss_function(predicted_test_output, y_test_batch)
+
+            wandb.log({"train_loss": loss.item(), "test_loss": test_loss.item()})
+            
+    wandb.finish()
 
 
 if __name__ == "__main__":
