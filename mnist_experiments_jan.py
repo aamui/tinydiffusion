@@ -117,7 +117,7 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
         for X_batch, y_batch in tqdm(train_data_loader):
             optimizer.zero_grad()
 
-            time = torch.rand(X_batch.shape[0]).reshape(-1, 1, 1).to(device)
+            time = torch.rand(X_batch.shape[0]).reshape(-1, 1).to(device)  # Fix this if you want to generate images again
 
             pure_noise_images = torch.randn(X_batch.shape).to(device)
             interpolated_images = time * X_batch + (1 - time) * pure_noise_images
@@ -142,7 +142,7 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
             losses = []
             for next_test_batch in test_data_loader:
                 X_test_batch, y_test_batch = next_test_batch
-                time_test = torch.rand(X_test_batch.shape[0]).reshape(-1, 1, 1).to(device)
+                time_test = torch.rand(X_test_batch.shape[0]).reshape(-1, 1).to(device)  # Fix this if you want to generate images again
                 pure_noise_test_images = torch.randn(X_test_batch.shape).to(device)
                 interpolated_test_images = time_test * X_test_batch + (1 - time_test) * pure_noise_test_images
 
@@ -165,17 +165,19 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
     model.to('cpu')
 
 
-def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu'):
+def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu', start_noise=None):
+    if start_noise is None:
+        start_noise = torch.randn(num_samples, 28, 28)
     model.to(device)
     model.eval()
     with torch.no_grad():
         # Start from pure noise at t=0
-        generated_images = torch.randn(num_samples, 28, 28).to(device)
+        generated_images = start_noise.to(device)
         dt = 1.0 / number_of_steps
         
         # Integrate from t=0 to t=1 (noise to data)
         for step in range(number_of_steps):
-            time = torch.full((num_samples, 1, 1), step / number_of_steps).to(device)
+            time = torch.full((num_samples, 1), step / number_of_steps).to(device)  # Fix this if you want to generate images again
             # Predict velocity at current position
             velocity = model(generated_images, time)
             # Euler integration: move along the flow
