@@ -8,6 +8,7 @@ from mnist_experiments_jan import train_model, generate_with_model
 
 def sample_geometric_object(h1=None, angle=None, scaling_factor=None, alpha=0.99):
     pareto_sample = pareto.rvs(alpha)
+    uniform_sample = np.random.uniform(1, 5)
     h1 = pareto_sample if h1 is None else h1
     angle = np.random.uniform(0,  2 * np.pi) if angle is None else angle
     scaling_factor = 1  # np.random.uniform(0.1, 1.0) if scaling_factor is None else scaling_factor
@@ -75,18 +76,6 @@ def analyze_generated_objects(generated_data):
     angles = []
 
     for i, points in enumerate(generated_data):
-        p1_p2 = points[1] - points[0]
-        p3_p4 = points[3] - points[2]
-
-        # length1 = np.linalg.norm(p1_p2)
-        # real_length1 = (np.exp(length1) - 1.5)
-        # length2 = np.linalg.norm(p3_p4)
-        # real_length2 = (np.exp(length2) - 1.5)
-
-        # scaling_factor = (real_length1 + real_length2) / 2
-        # h = length1 / scaling_factor / 4
-
-
         between_p1_p2 = (points[0] + points[1]) / 2
         between_p3_p4 = (points[2] + points[3]) / 2
         p1_p2_length = np.linalg.norm(between_p1_p2)
@@ -94,7 +83,7 @@ def analyze_generated_objects(generated_data):
         p3_p4_length = np.linalg.norm(between_p3_p4)
         real_p3_p4_length = (np.exp(p3_p4_length) - 1.5)
 
-        scaling_factor_alternate = (real_p1_p2_length + real_p3_p4_length) / 2
+        scaling_factor_alternate = real_p1_p2_length * real_p3_p4_length
         h_alternate = real_p1_p2_length / scaling_factor_alternate
         h_values.append(h_alternate)
         scaling_factors.append(scaling_factor_alternate)
@@ -108,14 +97,14 @@ def analyze_generated_objects(generated_data):
     return np.array(h_values), np.array(scaling_factors), np.array(angles)
 
 
-def plot_hs_against_pareto(h_values, alpha=0.99):
+def plot_hs_against_pareto(h_values, alpha=0.99, min_limit=0, max_limit=15):
     import matplotlib.pyplot as plt
     from scipy.stats import pareto
 
     sorted_h = np.sort(h_values)
     empirical_cdf = np.arange(1, len(sorted_h) + 1) / len(sorted_h)
 
-    x = np.linspace(min(sorted_h), max(sorted_h), 1000)
+    x = np.linspace(min_limit, max_limit, 1000)
     pareto_cdf = pareto.cdf(x, alpha)
 
     plt.figure(figsize=(8, 6))
@@ -124,6 +113,7 @@ def plot_hs_against_pareto(h_values, alpha=0.99):
     plt.xlabel('h values')
     plt.ylabel('CDF')
     plt.title('Empirical CDF of h values vs Pareto CDF')
+    plt.xlim(left=min_limit, right=max_limit)
     plt.legend()
     plt.grid()
     plt.show()
@@ -136,7 +126,7 @@ if __name__ == "__main__":
     X_test = torch.Tensor(dataset[int(0.8 * dataset_length):])
 
     model = Model()
-    train_model(model, X_train, torch.tensor([0 for _ in range(len(X_train))]), X_test, torch.tensor([0 for _ in range(len(X_test))]), num_epochs=10, use_wandb=True, device='cpu', batch_size=32)
+    train_model(model, X_train, torch.tensor([0 for _ in range(len(X_train))]), X_test, torch.tensor([0 for _ in range(len(X_test))]), num_epochs=1, use_wandb=True, device='cpu', batch_size=32)
     X_test_generated = generate_with_model(model, num_samples=len(X_test), number_of_steps=50, device='cpu', start_noise=X_test)
 
     print("Generated dataset shape:", X_test_generated.shape)
@@ -148,5 +138,5 @@ if __name__ == "__main__":
     h_values, scaling_factors, angles = analyze_generated_objects(X_test_generated.numpy())
     for i, (scaling_factor, h, angle) in enumerate(zip(scaling_factors[:display_samples], h_values[:display_samples], angles[:display_samples])):
         points = sample_geometric_object(h1=h, scaling_factor=scaling_factor, angle=angle)
-        save_geometric_object_svg(points, filename=f'analyzed_object_{i}.svg')
+        # save_geometric_object_svg(points, filename=f'analyzed_object_{i}.svg')
     plot_hs_against_pareto(h_values, alpha=0.99)
