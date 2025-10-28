@@ -97,7 +97,7 @@ def analyze_generated_objects(generated_data):
     return np.array(h_values), np.array(scaling_factors), np.array(angles)
 
 
-def plot_hs_against_pareto(h_values, alpha=0.99, min_limit=0, max_limit=15):
+def plot_hs_against_pareto(h_values, alpha=0.99, min_limit=0, max_limit=30):
     import matplotlib.pyplot as plt
     from scipy.stats import pareto
 
@@ -126,17 +126,23 @@ if __name__ == "__main__":
     X_test = torch.Tensor(dataset[int(0.8 * dataset_length):])
 
     model = Model()
-    train_model(model, X_train, torch.tensor([0 for _ in range(len(X_train))]), X_test, torch.tensor([0 for _ in range(len(X_test))]), num_epochs=1, use_wandb=True, device='cpu', batch_size=32)
+    train_model(model, X_train, torch.tensor([0 for _ in range(len(X_train))]), X_test, torch.tensor([0 for _ in range(len(X_test))]), num_epochs=3, use_wandb=True, device='cpu', batch_size=128)
     X_test_generated = generate_with_model(model, num_samples=len(X_test), number_of_steps=50, device='cpu', start_noise=X_test)
 
     print("Generated dataset shape:", X_test_generated.shape)
     display_samples = 20
     for i in range(display_samples):
         points = X_test_generated[i].numpy().reshape(4, 2)
-        save_geometric_object_svg(points, filename=f'generated_object_{i}.svg')
+        try:
+            save_geometric_object_svg(points, filename=f'{i}_generated_object.svg')
+        except Exception as e:
+            print(f"Error saving SVG for object {i}: {e}")
 
     h_values, scaling_factors, angles = analyze_generated_objects(X_test_generated.numpy())
     for i, (scaling_factor, h, angle) in enumerate(zip(scaling_factors[:display_samples], h_values[:display_samples], angles[:display_samples])):
         points = sample_geometric_object(h1=h, scaling_factor=scaling_factor, angle=angle)
-        # save_geometric_object_svg(points, filename=f'analyzed_object_{i}.svg')
+        try:
+            save_geometric_object_svg(points, filename=f'{i}_analyzed_object.svg')
+        except Exception as e:
+            print(f"Error saving SVG for object {i}: {e}")
     plot_hs_against_pareto(h_values, alpha=0.99)
