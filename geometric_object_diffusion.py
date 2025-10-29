@@ -11,7 +11,7 @@ def sample_geometric_object(h1=None, angle=None, scaling_factor=None, alpha=0.99
     uniform_sample = np.random.uniform(1, 5)
     h1 = pareto_sample if h1 is None else h1
     angle = np.random.uniform(0,  2 * np.pi) if angle is None else angle
-    scaling_factor = 1  # np.random.uniform(0.1, 1.0) if scaling_factor is None else scaling_factor
+    scaling_factor = np.random.uniform(0.1, 2.0) if scaling_factor is None else scaling_factor
 
     h2 = 1 / h1
     h1, h2 = np.log(h1 * scaling_factor + 1.5), np.log(h2 * scaling_factor + 1.5)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     X_test = torch.Tensor(dataset[int(0.8 * dataset_length):])
 
     model = Model()
-    train_model(model, X_train, torch.tensor([0 for _ in range(len(X_train))]), X_test, torch.tensor([0 for _ in range(len(X_test))]), num_epochs=3, use_wandb=True, device='cpu', batch_size=128)
+    train_model(model, X_train, torch.tensor([0 for _ in range(len(X_train))]), X_test, torch.tensor([0 for _ in range(len(X_test))]), num_epochs=10, use_wandb=True, device='cpu', batch_size=128)
     X_test_generated = generate_with_model(model, num_samples=len(X_test), number_of_steps=50, device='cpu', start_noise=X_test)
 
     print("Generated dataset shape:", X_test_generated.shape)
