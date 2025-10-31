@@ -1,2 +1,4 @@
 data/
 wandb/
+*.svg
+__pycache__/
