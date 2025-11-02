@@ -51,7 +51,7 @@ class ConvBlock(nn.Module):
 
 
 class UNetSmall(nn.Module):
-    def __init__(self, in_ch=1, base_ch=32, time_emb_dim=64):
+    def __init__(self, in_ch=1, base_ch=32, time_emb_dim=64, load_from_path=None):
         super().__init__()
 
         # time embedding (for diffusion or flow matching)
@@ -76,6 +76,11 @@ class UNetSmall(nn.Module):
 
         # Output
         self.out = nn.Conv2d(base_ch, in_ch, 1)
+
+        # Load checkpoint if path is provided
+        if load_from_path is not None:
+            self.load_state_dict(torch.load(load_from_path, map_location='cpu'))
+            print(f"Loaded model from {load_from_path}")
 
     def forward(self, x, t):
         x = x.unsqueeze(1)  # Ensure input has channel dimension
@@ -124,7 +129,7 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
 
             # Flow matching: predict the velocity (data - noise)
             velocity_target = X_batch - pure_noise_images
-            
+
             predicted_velocity = model(interpolated_images, time)
             loss = loss_function(predicted_velocity, velocity_target)
             losses.append(loss.item())
@@ -158,6 +163,9 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
         if use_wandb:
             wandb.log({"avg_train_loss_epoch": avg_train_loss, "avg_test_loss_epoch": avg_test_loss})
 
+        # Save model checkpoint
+        torch.save(model.state_dict(), f"checkpoints/unet_small_epoch_{epoch+1}.pth")
+
 
     if use_wandb:
         wandb.finish()
@@ -174,7 +182,7 @@ def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu',
         # Start from pure noise at t=0
         generated_images = start_noise.to(device)
         dt = 1.0 / number_of_steps
-        
+
         # Integrate from t=0 to t=1 (noise to data)
         for step in range(number_of_steps):
             time = torch.full((num_samples, 1, 1) if dimensionality_generation == 2 else (num_samples, 1), step / number_of_steps).to(device)
@@ -186,10 +194,27 @@ def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu',
     return generated_images.to('cpu')
 
 
+def example_load_and_generate(checkpoint_path, num_samples=5, number_of_steps=100, device='cpu'):
+    model = UNetSmall(load_from_path=checkpoint_path)
+
+    generated_images = generate_with_model(
+        model, 
+        num_samples=num_samples, 
+        number_of_steps=number_of_steps, 
+        device=device
+    )
+
+    return generated_images
+
+
 if __name__ == "__main__":
     (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
     visualize_n_samples(X_train, y_train, n=5)
     model = UNetSmall()
-    train_model(model, X_train, y_train, X_test, y_test, num_epochs=20, use_wandb=True, device='mps', batch_size=512)
+    train_model(model, X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
     generated_images = generate_with_model(model)
     visualize_n_samples(generated_images, n=5)
+
+    # Example: Load from checkpoint and generate
+    # generated_images = example_load_and_generate('checkpoints/unet_small_epoch_20.pth', num_samples=5, device='mps')
+    # visualize_n_samples(generated_images, n=min(5, len(generated_images)))
