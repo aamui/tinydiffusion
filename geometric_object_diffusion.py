@@ -126,8 +126,8 @@ if __name__ == "__main__":
     X_test = torch.Tensor(dataset[int(0.8 * dataset_length):])
 
     model = Model()
-    train_model(model, X_train, torch.tensor([0 for _ in range(len(X_train))]), X_test, torch.tensor([0 for _ in range(len(X_test))]), num_epochs=10, use_wandb=True, device='cpu', batch_size=128)
-    X_test_generated = generate_with_model(model, num_samples=len(X_test), number_of_steps=50, device='cpu', start_noise=X_test)
+    train_model(model, X_train, torch.tensor([0 for _ in range(len(X_train))]), X_test, torch.tensor([0 for _ in range(len(X_test))]), num_epochs=2, use_wandb=True, device='cpu', batch_size=128, dimensionality_training=1)
+    X_test_generated = generate_with_model(model, num_samples=len(X_test), number_of_steps=50, device='cpu', start_noise=X_test, dimensionality_generation=1)
 
     print("Generated dataset shape:", X_test_generated.shape)
     display_samples = 20

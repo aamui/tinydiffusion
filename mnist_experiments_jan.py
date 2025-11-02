@@ -99,7 +99,7 @@ class UNetSmall(nn.Module):
         return out.reshape(-1, 28, 28)
 
 
-def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, device='cpu', batch_size=32):
+def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, device='cpu', batch_size=32, dimensionality_training=2):
     model.to(device)
     if use_wandb:
         wandb.init(project="mnist-diffusion", name="unet-small-mse-loss")
@@ -117,7 +117,7 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
         for X_batch, y_batch in tqdm(train_data_loader):
             optimizer.zero_grad()
 
-            time = torch.rand(X_batch.shape[0]).reshape(-1, 1).to(device)  # Fix this if you want to generate images again
+            time = torch.rand(X_batch.shape[0]).reshape((-1, 1, 1) if dimensionality_training == 2 else (-1, 1)).to(device)
 
             pure_noise_images = torch.randn(X_batch.shape).to(device)
             interpolated_images = time * X_batch + (1 - time) * pure_noise_images
@@ -142,7 +142,7 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
             losses = []
             for next_test_batch in test_data_loader:
                 X_test_batch, y_test_batch = next_test_batch
-                time_test = torch.rand(X_test_batch.shape[0]).reshape(-1, 1).to(device)  # Fix this if you want to generate images again
+                time_test = torch.rand(X_test_batch.shape[0]).reshape((-1, 1, 1) if dimensionality_training == 2 else (-1, 1)).to(device)
                 pure_noise_test_images = torch.randn(X_test_batch.shape).to(device)
                 interpolated_test_images = time_test * X_test_batch + (1 - time_test) * pure_noise_test_images
 
@@ -165,7 +165,7 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
     model.to('cpu')
 
 
-def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu', start_noise=None):
+def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu', start_noise=None, dimensionality_generation=2):
     if start_noise is None:
         start_noise = torch.randn(num_samples, 28, 28)
     model.to(device)
@@ -177,7 +177,7 @@ def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu',
         
         # Integrate from t=0 to t=1 (noise to data)
         for step in range(number_of_steps):
-            time = torch.full((num_samples, 1), step / number_of_steps).to(device)  # Fix this if you want to generate images again
+            time = torch.full((num_samples, 1, 1) if dimensionality_generation == 2 else (num_samples, 1), step / number_of_steps).to(device)
             # Predict velocity at current position
             velocity = model(generated_images, time)
             # Euler integration: move along the flow
