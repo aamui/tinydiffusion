@@ -5,6 +5,8 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import wandb
 from tqdm import tqdm
+from unet import UNetSmall
+
 
 def load_mnist_datasets():
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
@@ -22,84 +24,26 @@ def load_mnist_datasets():
     return (X_train, y_train), (X_test, y_test)
 
 
-def visualize_n_samples(X_train, y_train=None, n=5):
-    fig, axes = plt.subplots(1, 5, figsize=(15, 3))
-    for i in range(5):
+def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False):
+    if output_binarization:
+        X_train = (X_train > 0.5).float()
+
+    n_rows = max(1, (n + 4) // 5)
+    fig, axes = plt.subplots(n_rows, 5, figsize=(15, 3 * n_rows))
+    
+    if n_rows == 1:
+        axes = axes.reshape(1, -1)
+    
+    for i in range(n):
         image = X_train[i]
         label = y_train[i] if y_train is not None else "Unknown"
-        axes[i].imshow(image.squeeze(), cmap='gray')
-        axes[i].set_title(f'Label: {label}')
-        axes[i].axis('off')
-    plt.legend()
+        axes[i // 5, i % 5].imshow(image.squeeze(), cmap='gray')
+        axes[i // 5, i % 5].set_title(f'Label: {label}')
+        axes[i // 5, i % 5].axis('off')
     plt.show()
 
 
-
-class ConvBlock(nn.Module):
-    def __init__(self, in_ch, out_ch):
-        super().__init__()
-        self.block = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, 3, padding=1),
-            nn.GroupNorm(1, out_ch),
-            nn.SiLU(),
-            nn.Conv2d(out_ch, out_ch, 3, padding=1),
-            nn.GroupNorm(1, out_ch),
-            nn.SiLU()
-        )
-    def forward(self, x):
-        return self.block(x)
-
-
-class UNetSmall(nn.Module):
-    def __init__(self, in_ch=1, base_ch=32, time_emb_dim=64):
-        super().__init__()
-
-        # time embedding (for diffusion or flow matching)
-        self.time_mlp = nn.Sequential(
-            nn.Linear(1, time_emb_dim),
-            nn.SiLU(),
-            nn.Linear(time_emb_dim, time_emb_dim)
-        )
-
-        # Encoder
-        self.enc1 = ConvBlock(in_ch, base_ch)
-        self.enc2 = ConvBlock(base_ch, base_ch * 2)
-        self.pool = nn.AvgPool2d(2)
-
-        # Bottleneck
-        self.bottleneck = ConvBlock(base_ch * 2, base_ch * 4)
-
-        # Decoder
-        self.up = nn.Upsample(scale_factor=2, mode='nearest')
-        self.dec1 = ConvBlock(base_ch * 4 + base_ch * 2, base_ch * 2)
-        self.dec2 = ConvBlock(base_ch * 2 + base_ch, base_ch)
-
-        # Output
-        self.out = nn.Conv2d(base_ch, in_ch, 1)
-
-    def forward(self, x, t):
-        x = x.unsqueeze(1)  # Ensure input has channel dimension
-        # Embed time and add it as conditioning
-        t_emb = self.time_mlp(t.view(-1, 1))
-        t_emb = t_emb[:, :, None, None]  # reshape to [batch, time_emb_dim, 1, 1]
-        # Rescale to match input channel dimension for addition
-        t_emb_scaled = t_emb / (t_emb.abs().max() + 1e-8) * 0.1  # scaled down
-
-        # Encoder
-        e1 = self.enc1(x)  # process image normally
-        e2 = self.enc2(self.pool(e1))
-
-        # Bottleneck
-        b = self.bottleneck(self.pool(e2))
-
-        # Decoder
-        d1 = self.dec1(torch.cat([self.up(b), e2], dim=1))
-        d2 = self.dec2(torch.cat([self.up(d1), e1], dim=1))
-        out = self.out(d2)
-        return out.reshape(-1, 28, 28)
-
-
-def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, device='cpu', batch_size=32, dimensionality_training=2):
+def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, device='cpu', batch_size=32, dimensionality_training=2, unet_type='small'):
     model.to(device)
     if use_wandb:
         wandb.init(project="mnist-diffusion", name="unet-small-mse-loss")
@@ -124,7 +68,7 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
 
             # Flow matching: predict the velocity (data - noise)
             velocity_target = X_batch - pure_noise_images
-            
+
             predicted_velocity = model(interpolated_images, time)
             loss = loss_function(predicted_velocity, velocity_target)
             losses.append(loss.item())
@@ -158,6 +102,9 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
         if use_wandb:
             wandb.log({"avg_train_loss_epoch": avg_train_loss, "avg_test_loss_epoch": avg_test_loss})
 
+        # Save model checkpoint
+        torch.save(model.state_dict(), f"checkpoints/unet_{unet_type}_epoch_{epoch+1}.pth")
+
 
     if use_wandb:
         wandb.finish()
@@ -174,22 +121,50 @@ def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu',
         # Start from pure noise at t=0
         generated_images = start_noise.to(device)
         dt = 1.0 / number_of_steps
-        
+
         # Integrate from t=0 to t=1 (noise to data)
-        for step in range(number_of_steps):
+        for step in tqdm(range(number_of_steps)):
             time = torch.full((num_samples, 1, 1) if dimensionality_generation == 2 else (num_samples, 1), step / number_of_steps).to(device)
             # Predict velocity at current position
             velocity = model(generated_images, time)
             # Euler integration: move along the flow
             generated_images = generated_images + velocity * dt
     model.to('cpu')
+
+    # Clip the image to valid range [0, 1]
+    generated_images = torch.clamp(generated_images, 0.0, 1.0)
+
     return generated_images.to('cpu')
+
+
+def example_load_and_generate(checkpoint_path, num_samples=5, number_of_steps=100, device='cpu', max_images_per_batch=2048):
+    model = UNetSmall(load_from_path=checkpoint_path)
+    
+    generated_images = []
+
+    for batch_start in tqdm(range(0, num_samples, max_images_per_batch)):
+        batch_end = min(batch_start + max_images_per_batch, num_samples)
+        batch_size = batch_end - batch_start
+        generated_images.extend(generate_with_model(
+            model, 
+            num_samples=batch_size, 
+            number_of_steps=number_of_steps, 
+            device=device
+        ))
+    
+    generated_images = torch.stack(generated_images)
+
+    return generated_images
 
 
 if __name__ == "__main__":
     (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
     visualize_n_samples(X_train, y_train, n=5)
     model = UNetSmall()
-    train_model(model, X_train, y_train, X_test, y_test, num_epochs=20, use_wandb=True, device='mps', batch_size=512)
+    train_model(model, X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
     generated_images = generate_with_model(model)
     visualize_n_samples(generated_images, n=5)
+
+    # Example: Load from checkpoint and generate
+    # generated_images = example_load_and_generate('checkpoints/unet_small_epoch_20.pth', num_samples=5, device='mps')
+    # visualize_n_samples(generated_images, n=min(5, len(generated_images)))
