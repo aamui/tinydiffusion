@@ -72,24 +72,20 @@ def generate_synthetic_dataset(num_samples):
 
 
 if __name__ == "__main__":
-    # X_train, y_train = generate_synthetic_dataset(500000)
+    X_train, y_train = generate_synthetic_dataset(500000)
 
-    # # Create a histogram over y_train
-    # plt.hist(y_train.numpy(), bins=range(y_train.min(), y_train.max() + 2))
-    # plt.title("Histogram of y_train")
-    # plt.show()
-
-    # X_test, y_test = generate_synthetic_dataset(100000)
-    # visualize_n_samples(X_test, y_test, n=15)
-    # model = UNetSmall()
-    # train_model(model, X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
-    # generated_images = generate_with_model(model)
-    # visualize_n_samples(generated_images, n=5)
+    X_test, y_test = generate_synthetic_dataset(100000)
+    visualize_n_samples(X_test, y_test, n=15)
+    model = UNetSmall()
+    train_model(model, X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
+    generated_images = generate_with_model(model)
+    visualize_n_samples(generated_images, n=5)
 
 
-    X_test, y_test = generate_synthetic_dataset(10000)
+    test_size = 100000
+    X_test, y_test = generate_synthetic_dataset(test_size)
     # Example: Load from checkpoint and generate
-    generated_images = example_load_and_generate('checkpoints/unet_small_epoch_21.pth', num_samples=10000, device='cpu', number_of_steps=25)
+    generated_images = example_load_and_generate('checkpoints/unet_small_epoch_50.pth', num_samples=test_size, device='mps', number_of_steps=25)
     detected_counts = count_white_pixels(generated_images)
     visualize_n_samples(generated_images, n=min(15, len(generated_images)), output_binarization=True, y_train=detected_counts)
     
@@ -101,21 +97,20 @@ if __name__ == "__main__":
     plt.show()
 
     # Create a QQ plot to compare detected_counts to y_test
-    from scipy import stats
-    
+
     # Sort both datasets
     sorted_detected = np.sort(detected_counts)
     sorted_y_test = np.sort(y_test.numpy())
-    
+
     # Create QQ plot
     plt.figure(figsize=(8, 8))
     plt.scatter(sorted_y_test, sorted_detected, alpha=0.5)
-    
+
     # Add diagonal reference line
     min_val = min(sorted_y_test.min(), sorted_detected.min())
     max_val = max(sorted_y_test.max(), sorted_detected.max())
     plt.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Match')
-    
+
     plt.xlabel('True Counts (y_test)')
     plt.ylabel('Detected Counts')
     plt.title('QQ Plot: Detected Counts vs True Counts')
