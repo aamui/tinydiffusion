@@ -22,15 +22,22 @@ def load_mnist_datasets():
     return (X_train, y_train), (X_test, y_test)
 
 
-def visualize_n_samples(X_train, y_train=None, n=5):
-    fig, axes = plt.subplots(1, 5, figsize=(15, 3))
-    for i in range(5):
+def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False):
+    if output_binarization:
+        X_train = (X_train > 0.5).float()
+
+    n_rows = max(1, (n + 4) // 5)
+    fig, axes = plt.subplots(n_rows, 5, figsize=(15, 3 * n_rows))
+    
+    if n_rows == 1:
+        axes = axes.reshape(1, -1)
+    
+    for i in range(n):
         image = X_train[i]
         label = y_train[i] if y_train is not None else "Unknown"
-        axes[i].imshow(image.squeeze(), cmap='gray')
-        axes[i].set_title(f'Label: {label}')
-        axes[i].axis('off')
-    plt.legend()
+        axes[i // 5, i % 5].imshow(image.squeeze(), cmap='gray')
+        axes[i // 5, i % 5].set_title(f'Label: {label}')
+        axes[i // 5, i % 5].axis('off')
     plt.show()
 
 
@@ -191,6 +198,10 @@ def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu',
             # Euler integration: move along the flow
             generated_images = generated_images + velocity * dt
     model.to('cpu')
+
+    # Clip the image to valid range [0, 1]
+    generated_images = torch.clamp(generated_images, 0.0, 1.0)
+
     return generated_images.to('cpu')
 
 

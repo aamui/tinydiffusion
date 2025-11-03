@@ -1,6 +1,8 @@
 import numpy as np
 from mnist_experiments_jan import visualize_n_samples, train_model, generate_with_model, UNetSmall, example_load_and_generate
 import torch
+import matplotlib.pyplot as plt
+import random
 
 
 def check_for_availability(grid, p, orientation):
@@ -21,7 +23,8 @@ def generate_synthetic_image():
     image[lrp[0], lrp[1]] = 1.0
     
     points_counter = 1
-    while np.random.rand() < 0.98:
+    target_point_counter = random.randint(1, 250)
+    while points_counter < target_point_counter: # np.random.rand() < 0.98:
         available_directions = []
         if lrp[0] > 0 and check_for_availability(image, (lrp[0] - 1, lrp[1]), 'horizontal') and check_for_availability(image, (lrp[0] - 2, lrp[1]), 'horizontal'):
             available_directions.append('up')
@@ -60,14 +63,20 @@ def generate_synthetic_dataset(num_samples):
 
 
 if __name__ == "__main__":
-    # X_train, y_train = generate_synthetic_dataset(500000)
-    # X_test, y_test = generate_synthetic_dataset(100000)
-    # visualize_n_samples(X_train, y_train, n=5)
-    # model = UNetSmall()
-    # train_model(model, X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
-    # generated_images = generate_with_model(model)
-    # visualize_n_samples(generated_images, n=5)
+    X_train, y_train = generate_synthetic_dataset(500000)
+    
+    # Create a histogram over y_train
+    plt.hist(y_train.numpy(), bins=range(y_train.min(), y_train.max() + 2))
+    plt.title("Histogram of y_train")
+    plt.show()
+
+    X_test, y_test = generate_synthetic_dataset(100000)
+    visualize_n_samples(X_train, y_train, n=15)
+    model = UNetSmall()
+    train_model(model, X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
+    generated_images = generate_with_model(model)
+    visualize_n_samples(generated_images, n=5)
 
     # Example: Load from checkpoint and generate
-    generated_images = example_load_and_generate('checkpoints/unet_small_epoch_6.pth', num_samples=5, device='mps')
-    visualize_n_samples(generated_images, n=min(5, len(generated_images)))
+    generated_images = example_load_and_generate('checkpoints/unet_small_epoch_50.pth', num_samples=15, device='mps', number_of_steps=25)
+    visualize_n_samples(generated_images, n=min(15, len(generated_images)), output_binarization=True)
