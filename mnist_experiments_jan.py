@@ -191,7 +191,7 @@ def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu',
         dt = 1.0 / number_of_steps
 
         # Integrate from t=0 to t=1 (noise to data)
-        for step in range(number_of_steps):
+        for step in tqdm(range(number_of_steps)):
             time = torch.full((num_samples, 1, 1) if dimensionality_generation == 2 else (num_samples, 1), step / number_of_steps).to(device)
             # Predict velocity at current position
             velocity = model(generated_images, time)

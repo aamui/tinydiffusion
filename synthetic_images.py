@@ -3,6 +3,7 @@ from mnist_experiments_jan import visualize_n_samples, train_model, generate_wit
 import torch
 import matplotlib.pyplot as plt
 import random
+from tqdm import tqdm
 
 
 def check_for_availability(grid, p, orientation):
@@ -21,7 +22,7 @@ def generate_synthetic_image():
     image = np.zeros((28, 28), dtype=np.float32)
     lrp = np.random.randint(0, 28, size=2)
     image[lrp[0], lrp[1]] = 1.0
-    
+
     points_counter = 1
     target_point_counter = random.randint(1, 250)
     while points_counter < target_point_counter: # np.random.rand() < 0.98:
@@ -52,10 +53,18 @@ def generate_synthetic_image():
     return image, points_counter
 
 
+def count_white_pixels(image_dataset):
+    labels = []
+    binary_images = (image_dataset > 0.5).float()
+    for img in tqdm(binary_images):
+        labels.append(int(torch.sum(img).item()))
+    return labels
+
+
 def generate_synthetic_dataset(num_samples):
     images = []
     labels = []
-    for _ in range(num_samples):
+    for _ in tqdm(range(num_samples)):
         img, label = generate_synthetic_image()
         images.append(img)
         labels.append(label)
@@ -63,20 +72,53 @@ def generate_synthetic_dataset(num_samples):
 
 
 if __name__ == "__main__":
-    X_train, y_train = generate_synthetic_dataset(500000)
+    # X_train, y_train = generate_synthetic_dataset(500000)
+
+    # # Create a histogram over y_train
+    # plt.hist(y_train.numpy(), bins=range(y_train.min(), y_train.max() + 2))
+    # plt.title("Histogram of y_train")
+    # plt.show()
+
+    # X_test, y_test = generate_synthetic_dataset(100000)
+    # visualize_n_samples(X_test, y_test, n=15)
+    # model = UNetSmall()
+    # train_model(model, X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
+    # generated_images = generate_with_model(model)
+    # visualize_n_samples(generated_images, n=5)
+
+
+    X_test, y_test = generate_synthetic_dataset(10000)
+    # Example: Load from checkpoint and generate
+    generated_images = example_load_and_generate('checkpoints/unet_small_epoch_21.pth', num_samples=10000, device='cpu', number_of_steps=25)
+    detected_counts = count_white_pixels(generated_images)
+    visualize_n_samples(generated_images, n=min(15, len(generated_images)), output_binarization=True, y_train=detected_counts)
     
-    # Create a histogram over y_train
-    plt.hist(y_train.numpy(), bins=range(y_train.min(), y_train.max() + 2))
-    plt.title("Histogram of y_train")
+    # Create a histogram over detected_counts compared to y_test
+    plt.hist(detected_counts, bins=range(min(detected_counts), max(detected_counts) + 2), alpha=0.5, label='Detected Counts')
+    plt.hist(y_test.numpy(), bins=range(y_test.min().item(), y_test.max().item() + 2), alpha=0.5, label='True Counts')
+    plt.title("Histogram of Detected Counts vs True Counts")
+    plt.legend()
     plt.show()
 
-    X_test, y_test = generate_synthetic_dataset(100000)
-    visualize_n_samples(X_train, y_train, n=15)
-    model = UNetSmall()
-    train_model(model, X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
-    generated_images = generate_with_model(model)
-    visualize_n_samples(generated_images, n=5)
-
-    # Example: Load from checkpoint and generate
-    generated_images = example_load_and_generate('checkpoints/unet_small_epoch_50.pth', num_samples=15, device='mps', number_of_steps=25)
-    visualize_n_samples(generated_images, n=min(15, len(generated_images)), output_binarization=True)
+    # Create a QQ plot to compare detected_counts to y_test
+    from scipy import stats
+    
+    # Sort both datasets
+    sorted_detected = np.sort(detected_counts)
+    sorted_y_test = np.sort(y_test.numpy())
+    
+    # Create QQ plot
+    plt.figure(figsize=(8, 8))
+    plt.scatter(sorted_y_test, sorted_detected, alpha=0.5)
+    
+    # Add diagonal reference line
+    min_val = min(sorted_y_test.min(), sorted_detected.min())
+    max_val = max(sorted_y_test.max(), sorted_detected.max())
+    plt.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=2, label='Perfect Match')
+    
+    plt.xlabel('True Counts (y_test)')
+    plt.ylabel('Detected Counts')
+    plt.title('QQ Plot: Detected Counts vs True Counts')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.show()
