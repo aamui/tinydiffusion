@@ -71,33 +71,31 @@ def generate_synthetic_dataset(num_samples):
     return torch.tensor(images), torch.tensor(labels)
 
 
-if __name__ == "__main__":
-    X_train, y_train = generate_synthetic_dataset(500000)
-
-    X_test, y_test = generate_synthetic_dataset(100000)
+def training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=512, use_wandb=True):
+    X_train, y_train = generate_synthetic_dataset(num_train_samples)
+    X_test, y_test = generate_synthetic_dataset(num_test_samples)
+    
     visualize_n_samples(X_test, y_test, n=15)
+    
     model = UNetSmall()
-    train_model(model, X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
+    train_model(model, X_train, y_train, X_test, y_test, num_epochs=num_epochs, use_wandb=use_wandb, device=device, batch_size=batch_size)
+    
     generated_images = generate_with_model(model)
     visualize_n_samples(generated_images, n=5)
-
-
-    test_size = 100000
-    X_test, y_test = generate_synthetic_dataset(test_size)
-    # Example: Load from checkpoint and generate
-    generated_images = example_load_and_generate('checkpoints/unet_small_epoch_50.pth', num_samples=test_size, device='mps', number_of_steps=25)
-    detected_counts = count_white_pixels(generated_images)
-    visualize_n_samples(generated_images, n=min(15, len(generated_images)), output_binarization=True, y_train=detected_counts)
     
-    # Create a histogram over detected_counts compared to y_test
+    return model
+
+
+def create_histogram(detected_counts, y_test):
+    plt.figure()
     plt.hist(detected_counts, bins=range(min(detected_counts), max(detected_counts) + 2), alpha=0.5, label='Detected Counts')
     plt.hist(y_test.numpy(), bins=range(y_test.min().item(), y_test.max().item() + 2), alpha=0.5, label='True Counts')
     plt.title("Histogram of Detected Counts vs True Counts")
     plt.legend()
     plt.show()
 
-    # Create a QQ plot to compare detected_counts to y_test
 
+def create_qq_plot(detected_counts, y_test):
     # Sort both datasets
     sorted_detected = np.sort(detected_counts)
     sorted_y_test = np.sort(y_test.numpy())
@@ -117,3 +115,23 @@ if __name__ == "__main__":
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.show()
+
+
+def evaluate_saved_model(checkpoint_path, test_size=100000, device='mps', number_of_steps=25, num_visualize=15):
+    X_test, y_test = generate_synthetic_dataset(test_size)
+    visualize_n_samples(X_test, y_test, n=num_visualize)
+
+    generated_images = example_load_and_generate(checkpoint_path, num_samples=test_size, device=device, number_of_steps=number_of_steps)
+    detected_counts = count_white_pixels(generated_images)
+    visualize_n_samples(generated_images, n=min(num_visualize, len(generated_images)), output_binarization=True, y_train=detected_counts)
+
+    create_histogram(detected_counts, y_test)
+    create_qq_plot(detected_counts, y_test)
+
+    return generated_images, detected_counts, y_test
+
+
+if __name__ == "__main__":
+    # training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=512, use_wandb=True)
+    
+    evaluate_saved_model('checkpoints/unet_small_epoch_50.pth', test_size=10000, device='mps', number_of_steps=25)
