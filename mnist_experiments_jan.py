@@ -205,7 +205,7 @@ def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu',
     return generated_images.to('cpu')
 
 
-def example_load_and_generate(checkpoint_path, num_samples=5, number_of_steps=100, device='cpu', max_images_per_batch=8192):
+def example_load_and_generate(checkpoint_path, num_samples=5, number_of_steps=100, device='cpu', max_images_per_batch=2048):
     model = UNetSmall(load_from_path=checkpoint_path)
     
     generated_images = []
