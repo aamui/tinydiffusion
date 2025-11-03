@@ -122,16 +122,16 @@ class UNetMedium(nn.Module):
         t_emb_scaled = t_emb / (t_emb.abs().max() + 1e-8) * 0.1  # scaled down
 
         # Encoder (3 levels)
-        e1 = self.enc1(x)  # 28x28 -> 28x28 (base_ch)
-        e2 = self.enc2(self.pool(e1))  # 28x28 -> 14x14 (base_ch*2)
-        e3 = self.enc3(self.pool(e2))  # 14x14 -> 7x7 (base_ch*4)
+        e1 = self.enc1(x)  # 28x28 (base_ch)
+        e2 = self.enc2(self.pool(e1))  # 14x14 (base_ch*2)
+        e3 = self.enc3(self.pool(e2))  # 7x7 (base_ch*4)
 
         # Bottleneck
-        b = self.bottleneck(self.pool(e3))  # 7x7 -> 3x3 (base_ch*8)
+        b = self.bottleneck(e3)  # 7x7 (base_ch*8)
 
-        # Decoder (3 levels)
-        d1 = self.dec1(torch.cat([self.up(b), e3], dim=1))  # 3x3 -> 7x7
-        d2 = self.dec2(torch.cat([self.up(d1), e2], dim=1))  # 7x7 -> 14x14
-        d3 = self.dec3(torch.cat([self.up(d2), e1], dim=1))  # 14x14 -> 28x28
+        # Decoder (3 levels) 
+        d1 = self.dec1(torch.cat([b, e3], dim=1))  # 7x7
+        d2 = self.dec2(torch.cat([self.up(d1), e2], dim=1))  # 14x14
+        d3 = self.dec3(torch.cat([self.up(d2), e1], dim=1))  # 28x28
         out = self.out(d3)
         return out.reshape(-1, 28, 28)
