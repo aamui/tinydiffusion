@@ -43,7 +43,7 @@ def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False):
     plt.show()
 
 
-def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, device='cpu', batch_size=32, dimensionality_training=2):
+def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, device='cpu', batch_size=32, dimensionality_training=2, unet_type='small'):
     model.to(device)
     if use_wandb:
         wandb.init(project="mnist-diffusion", name="unet-small-mse-loss")
@@ -103,7 +103,7 @@ def train_model(model, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb
             wandb.log({"avg_train_loss_epoch": avg_train_loss, "avg_test_loss_epoch": avg_test_loss})
 
         # Save model checkpoint
-        torch.save(model.state_dict(), f"checkpoints/unet_small_epoch_{epoch+1}.pth")
+        torch.save(model.state_dict(), f"checkpoints/unet_{unet_type}_epoch_{epoch+1}.pth")
 
 
     if use_wandb:
