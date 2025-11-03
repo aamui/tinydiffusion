@@ -4,6 +4,7 @@ import torch
 import matplotlib.pyplot as plt
 import random
 from tqdm import tqdm
+from unet import UNetSmall
 
 
 def check_for_availability(grid, p, orientation):
@@ -132,6 +133,6 @@ def evaluate_saved_model(checkpoint_path, test_size=100000, device='mps', number
 
 
 if __name__ == "__main__":
-    # training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=512, use_wandb=True)
+    training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=512, use_wandb=True)
 
-    evaluate_saved_model('checkpoints/unet_small_epoch_50.pth', test_size=100000, device='mps', number_of_steps=25)
+    # evaluate_saved_model('checkpoints/unet_small_epoch_50.pth', test_size=100000, device='mps', number_of_steps=25)
