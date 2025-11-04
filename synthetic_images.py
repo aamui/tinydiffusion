@@ -122,7 +122,7 @@ def evaluate_saved_model(checkpoint_path, test_size=100000, device='mps', number
     X_test, y_test = generate_synthetic_dataset(test_size)
     visualize_n_samples(X_test, y_test, n=num_visualize)
 
-    generated_images = example_load_and_generate(checkpoint_path, num_samples=test_size, device=device, number_of_steps=number_of_steps)
+    generated_images = example_load_and_generate(checkpoint_path, num_samples=test_size, device=device, number_of_steps=number_of_steps, model_type='medium' if 'medium' in checkpoint_path else 'small')
     detected_counts = count_white_pixels(generated_images)
     visualize_n_samples(generated_images, n=min(num_visualize, len(generated_images)), output_binarization=True, y_train=detected_counts)
 
@@ -133,6 +133,6 @@ def evaluate_saved_model(checkpoint_path, test_size=100000, device='mps', number
 
 
 if __name__ == "__main__":
-    training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=256, use_wandb=True, unet_type='medium')
+    # training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=256, use_wandb=True, unet_type='medium')
 
-    # evaluate_saved_model('checkpoints/unet_small_epoch_50.pth', test_size=100000, device='mps', number_of_steps=25)
+    evaluate_saved_model('checkpoints/unet_medium_epoch_50.pth', test_size=100000, device='mps', number_of_steps=25)

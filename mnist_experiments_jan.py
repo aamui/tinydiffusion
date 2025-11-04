@@ -5,7 +5,7 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import wandb
 from tqdm import tqdm
-from unet import UNetSmall
+from unet import UNetMedium, UNetSmall
 
 
 def load_mnist_datasets():
@@ -137,8 +137,8 @@ def generate_with_model(model, num_samples=5, number_of_steps=100, device='cpu',
     return generated_images.to('cpu')
 
 
-def example_load_and_generate(checkpoint_path, num_samples=5, number_of_steps=100, device='cpu', max_images_per_batch=2048):
-    model = UNetSmall(load_from_path=checkpoint_path)
+def example_load_and_generate(checkpoint_path, num_samples=5, number_of_steps=100, device='cpu', max_images_per_batch=2048, model_type='small'):
+    model = UNetSmall(load_from_path=checkpoint_path) if model_type == 'small' else UNetMedium(load_from_path=checkpoint_path)
     
     generated_images = []
 
