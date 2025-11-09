@@ -27,13 +27,13 @@ class NoiseScheduler:
 		if schedule == 'linear':
 			betas = linear_schedule(self.timesteps)
 		if schedule == 'cosine':
-			betas = cosine_schedule(self.timesteps)
+			betas = cosine_schedule(self.timesteps, s=0.008)
 
 		self.betas = betas # 1,T vector
 		self.alphas = 1. - betas # 1,T vector
 
 		self.alphas_cumprod = torch.cumprod(self.alphas, dim = 0) # alpha bar
-		self.alphas_cumprod_prev = torch.cat(torch.ones(1), self.alphas_cumprod[:-1]) 
+		self.alphas_cumprod_prev = torch.cat((torch.ones(1), self.alphas_cumprod[:-1]))
 		
 		self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
 		self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - self.alphas_cumprod)
@@ -53,6 +53,7 @@ class NoiseScheduler:
 
 		self.sqrt_inv_alphas_cumprod = self.sqrt_inv_alphas_cumprod.to(device)
 		self.sqrt_inv_alphas_cumprod_minus_one = self.sqrt_inv_alphas_cumprod_minus_one.to(device)
+		return self
 
 
 
