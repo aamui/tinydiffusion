@@ -3,8 +3,7 @@ import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-from unet import UNetMedium, UNetSmall
-from flow_matching import train_model, generate_with_model
+from flow_matching import FlowMatching
 
 
 def load_mnist_datasets():
@@ -45,9 +44,9 @@ def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False):
 if __name__ == "__main__":
     (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
     visualize_n_samples(X_train, y_train, n=5)
-    model = UNetSmall()
-    train_model(model, X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
-    generated_images = generate_with_model(model)
+    model = FlowMatching(model_type='small', dimensionality=2)
+    model.train(X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
+    generated_images = model.generate(num_samples=500, device='mps', number_of_steps=25)
     visualize_n_samples(generated_images, n=5)
 
     # Example: Load from checkpoint and generate
