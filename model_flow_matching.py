@@ -4,9 +4,10 @@ from tqdm import tqdm
 import wandb
 from unet import UNetMedium, UNetSmall
 import os
+from abstract_model import ModelInterface
 
 
-class FlowMatching:
+class FlowMatching(ModelInterface):
     def __init__(self, model_type='small', load_from_path=None, dimensionality=2):
         self.model_type = model_type
         self.dimensionality = dimensionality
