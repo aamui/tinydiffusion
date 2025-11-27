@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import random
 from tqdm import tqdm
 from experiment_mnist_flow_matching import visualize_n_samples
-from flow_matching import example_load_and_generate
+from flow_matching import FlowMatching
 
 
 def check_for_availability(grid, p, orientation):
@@ -107,7 +107,9 @@ def evaluate_saved_model(checkpoint_path, test_size=100000, device='mps', number
     X_test, y_test = generate_synthetic_dataset(test_size)
     visualize_n_samples(X_test, y_test, n=num_visualize)
 
-    generated_images = example_load_and_generate(checkpoint_path, num_samples=test_size, device=device, number_of_steps=number_of_steps, model_type='medium' if 'medium' in checkpoint_path else 'small')
+    model = FlowMatching(model_type='medium' if 'medium' in checkpoint_path else 'small', dimensionality=2)
+    model.model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    generated_images = model.generate(num_samples=test_size, device=device, number_of_steps=number_of_steps)
     detected_counts = count_white_pixels(generated_images)
     visualize_n_samples(generated_images, n=min(num_visualize, len(generated_images)), output_binarization=True, y_train=detected_counts)
 

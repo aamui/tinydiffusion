@@ -19,7 +19,7 @@ def training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epo
     return model
 
 if __name__ == "__main__":
-    training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=256, use_wandb=True, unet_type='medium')
+    training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=5, device='mps', batch_size=256, use_wandb=True, unet_type='medium')
 
     # trained_model = FlowMatching(model_type='medium', dimensionality=2)
     # trained_modelevaluate_saved_model('checkpoints/unet_medium_epoch_50.pth', test_size=100000, device='mps', number_of_steps=25)
