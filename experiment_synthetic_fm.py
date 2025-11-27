@@ -1,6 +1,5 @@
 from synthetic_images import evaluate_saved_model, generate_synthetic_dataset, visualize_n_samples
-from unet import UNetSmall, UNetMedium
-from flow_matching import FlowMatching
+from model_flow_matching import FlowMatching
 
 
 
@@ -19,7 +18,6 @@ def training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epo
     return model
 
 if __name__ == "__main__":
-    training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=5, device='mps', batch_size=256, use_wandb=True, unet_type='medium')
+    training_pipeline(num_train_samples=50000, num_test_samples=10000, num_epochs=3, device='mps', batch_size=256, use_wandb=True, unet_type='medium')
 
-    # trained_model = FlowMatching(model_type='medium', dimensionality=2)
-    # trained_modelevaluate_saved_model('checkpoints/unet_medium_epoch_50.pth', test_size=100000, device='mps', number_of_steps=25)
+    evaluate_saved_model(checkpoint_path='checkpoints/unet_medium_epoch_3.pth', test_size=10000, device='mps', number_of_steps=25, num_visualize=15)

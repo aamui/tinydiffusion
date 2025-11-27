@@ -3,7 +3,7 @@ import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-from flow_matching import FlowMatching
+from model_flow_matching import FlowMatching
 
 
 def load_mnist_datasets():
