@@ -18,7 +18,7 @@ def main():
 	parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
 	parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
 	parser.add_argument("--noise_schedule", type = str, default="linear", help = "linear OR cosine")
-	# parser.add_argument("--device", type=str, default="mps", help="Device (cuda, cpu, or mps)")
+	parser.add_argument("--model_path", type=str, default="model.pt", help="Model name")
 	args = parser.parse_args()
 
 	timesteps = 1000
@@ -61,7 +61,7 @@ def main():
 	samples_path = os.path.join(sample_dir, 'ddim_mnist_samples.png')
 	save_image(grid, samples_path)
 
-	model_path = os.path.join(save_dir, 'ddim_mnist_model.pt')
+	model_path = os.path.join(save_dir, args.model_path)
 	torch.save(model.state_dict(), model_path)
 	print(f'Model saved to {model_path}')
 	print(f'Samples saved to {samples_path}')
