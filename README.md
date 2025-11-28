@@ -34,5 +34,5 @@ ddim_sample.py args:
 
 ```
 cd ddim
-python ddim_sample.py --num_samples=10 --model_path="./results/ddim_mnist_model.pt" --save_file="images"
+python ddim_sample.py --num_samples=10 --model_path="./results/ddim_mnist_model.pt" --save_file="images.png"
 ```
