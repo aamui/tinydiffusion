@@ -1,4 +1,4 @@
-# tinydiffusion
+<img width="1470" height="956" alt="image" src="https://github.com/user-attachments/assets/dce312eb-9aa1-44d0-a585-bc94bb8549c3" /># tinydiffusion
 cs274E project repository
 
 ## DDIM
@@ -12,9 +12,27 @@ train.py args:
   --lr (default = 1e-4)
   
   --noise_schedule ("linear" or "cosine", default = "linear")
+
+  --model_path (default="model.pt")
 ```
 cd ddim
-python train.py --batch_size=32 --epochs=20
+python train.py --batch_size=32 --epochs=20 --model_path=mnist_model.pt
 ```
 
 ### to sample:
+ddim_sample.py args:
+
+  --num_samples
+
+  --inference_steps
+
+  --noise_schedule
+
+  --model_path
+
+  --save_file
+
+```
+cd ddim
+python ddim_sample.py --num_samples=10 --model_path="./results/ddim_mnist_model.pt" --save_file="images"
+```
