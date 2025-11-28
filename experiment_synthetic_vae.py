@@ -2,6 +2,7 @@ from synthetic_images import evaluate_saved_model, generate_synthetic_dataset, v
 from model_flow_matching import FlowMatching
 
 
+
 def training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=512, use_wandb=True, unet_type='small'):
     X_train, y_train = generate_synthetic_dataset(num_train_samples)
     X_test, y_test = generate_synthetic_dataset(num_test_samples)

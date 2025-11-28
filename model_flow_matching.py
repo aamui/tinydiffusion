@@ -19,23 +19,13 @@ class FlowMatching(Model):
 
     def train(self, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, 
               device='cpu', batch_size=32, checkpoint_dir='checkpoints'):
-        os.makedirs(checkpoint_dir, exist_ok=True)
-
-        self.model.to(device)
         if use_wandb:
             wandb.init(project="mnist-diffusion", name=f"unet-{self.model_type}-mse-loss")
-
-        train_data_loader = torch.utils.data.DataLoader(
-            torch.utils.data.TensorDataset(X_train.to(device), y_train.to(device)), 
-            batch_size=batch_size, shuffle=True
-        )
-        test_data_loader = torch.utils.data.DataLoader(
-            torch.utils.data.TensorDataset(X_test.to(device), y_test.to(device)), 
-            batch_size=batch_size, shuffle=False
-        )
+        self.model.to(device)
 
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4, weight_decay=2e-5)
-        loss_function = nn.MSELoss()
+
+        train_data_loader, test_data_loader, loss_function = self._prepare_training(X_train, y_train, X_test, y_test, checkpoint_dir, batch_size, device)
 
         for epoch in tqdm(range(num_epochs)):
             print(f"Running epoch {epoch+1}/{num_epochs}")
