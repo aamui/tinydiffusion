@@ -35,6 +35,7 @@ class VAE(nn.Module, Model):
         self.dec3 = ConvBlock(base_ch, base_ch)
 
         self.out = nn.Conv2d(base_ch, in_ch, 1)
+        self.sigmoid = nn.Sigmoid()
 
         if load_from_path is not None:
             self.load_state_dict(torch.load(load_from_path, map_location='cpu'))
@@ -56,7 +57,7 @@ class VAE(nn.Module, Model):
         eps = torch.randn_like(std)
         return mu + eps * std
 
-    def decode(self, z):
+    def decode(self, z, apply_sigmoid=True):
         x = self.fully_connected_decode(z)
         x = self.fc_decode(x)
         x = x.view(x.size(0), -1, 7, 7)  # Reshape to feature map
@@ -64,12 +65,15 @@ class VAE(nn.Module, Model):
         x = self.up(self.dec2(x))         # 28x28
         x = self.dec3(x)
         x = self.out(x)
-        return x.reshape(-1, 28, 28)
+        logits = x.reshape(-1, 28, 28)
+        if apply_sigmoid:
+            return self.sigmoid(logits)
+        return logits
 
-    def forward(self, x):
+    def forward(self, x, apply_sigmoid=True):
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
-        return self.decode(z), mu, logvar
+        return self.decode(z, apply_sigmoid=apply_sigmoid), mu, logvar
 
     def sample(self, num_samples=1, device='cpu'):
         z = torch.randn(num_samples, self.latent_dim, device=device)
@@ -80,10 +84,12 @@ class VAE(nn.Module, Model):
         if use_wandb:
             wandb.init(project="mnist-diffusion", name=f"unet-{self.model_type}-mse-loss")
         optimizer = torch.optim.AdamW(self.parameters(), lr=1e-4, weight_decay=2e-5)
-    
+
         self.to(device)
 
-        train_data_loader, test_data_loader, loss_function = self._prepare_training(X_train, y_train, X_test, y_test, checkpoint_dir, batch_size, device)
+        train_data_loader, test_data_loader, _ = self._prepare_training(X_train, y_train, X_test, y_test, checkpoint_dir, batch_size, device)
+        # Use BCEWithLogitsLoss for numerical stability (expects logits, not probabilities)
+        loss_function = nn.BCEWithLogitsLoss()
 
         for epoch in tqdm(range(num_epochs)):
             print(f"Running epoch {epoch+1}/{num_epochs}")
@@ -91,8 +97,9 @@ class VAE(nn.Module, Model):
             for X_batch, y_batch in tqdm(train_data_loader):
                 optimizer.zero_grad()
 
-                reconstructed, mu, logvar = self(X_batch)
-                recon_loss = loss_function(reconstructed, X_batch)
+                # Get logits (no sigmoid) for numerically stable BCE loss
+                reconstructed_logits, mu, logvar = self(X_batch, apply_sigmoid=False)
+                recon_loss = loss_function(reconstructed_logits, X_batch)
                 kl_loss = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
                 loss = recon_loss + kl_weight * kl_loss
 
@@ -110,8 +117,8 @@ class VAE(nn.Module, Model):
                 losses = []
                 for next_test_batch in test_data_loader:
                     X_test_batch, y_test_batch = next_test_batch
-                    reconstructed_test, mu_test, logvar_test = self(X_test_batch)
-                    recon_loss_test = loss_function(reconstructed_test, X_test_batch)
+                    reconstructed_logits_test, mu_test, logvar_test = self(X_test_batch, apply_sigmoid=False)
+                    recon_loss_test = loss_function(reconstructed_logits_test, X_test_batch)
                     kl_loss_test = -0.5 * torch.mean(1 + logvar_test - mu_test.pow(2) - logvar_test.exp())
                     test_loss = recon_loss_test + kl_weight * kl_loss_test
                     losses.append(test_loss.item())
@@ -128,10 +135,10 @@ class VAE(nn.Module, Model):
             wandb.finish()
 
         self.to('cpu')
-        
+
     def generate_dataset(self, num_samples, device='cpu'):
         generated_images = []
-        
+
         self.to(device)
         with torch.no_grad():
             for _ in tqdm(range(num_samples)):
