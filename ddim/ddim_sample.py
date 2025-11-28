@@ -14,8 +14,8 @@ def main():
 	parser.add_argument("--num_samples", type = int, default = 10, help = 'Number of samples')
 	parser.add_argument("--inference_steps", type = int, default = 50, help = "Number of inference steps")
 	parser.add_argument("--noise_schedule", type = str, default="linear", help = "linear OR cosine")
-	parser.add_argument("--model_path" type = str, default = jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj, help = "path to saved model")
-	parser.add_argument("--save_file", type = str, default = "samples", help "save file name")
+	parser.add_argument("--model_path", type = str, default = "./results/ddim_mnist_model.pt", help = "path to saved model")
+	parser.add_argument("--save_file", type = str, default = "samples.png", help= "save file name")
 	args = parser.parse_args()
 
 	if torch.cuda.is_available():
@@ -35,7 +35,7 @@ def main():
 	diff = diffusion(model, noise_scheduler, device = device)
 
 	save_dir = 'results'
-	sample_dir = os.path.join(save_dir, samples)
+	sample_dir = os.path.join(save_dir,"samples")
 	os.makedirs(sample_dir, exist_ok=True)
 
 	print('Sampling...')
