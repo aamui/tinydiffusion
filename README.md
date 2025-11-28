@@ -1,7 +1,8 @@
 # tinydiffusion
 cs274E project repository
 
-To run ddim:
+## To run ddim:
+
 train.py args:
 
   --batch_size (default = 64)
