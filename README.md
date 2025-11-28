@@ -13,7 +13,7 @@ train.py args:
   
   --noise_schedule ("linear" or "cosine", default = "linear")
 
-  --model_path (default="model.pt")
+  --model_path (What the saved model name will be called. default="model.pt")
 ```
 cd ddim
 python train.py --batch_size=32 --epochs=20 --model_path="mnist_model.pt"
