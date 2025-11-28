@@ -16,7 +16,7 @@ train.py args:
   --model_path (default="model.pt")
 ```
 cd ddim
-python train.py --batch_size=32 --epochs=20 --model_path=mnist_model.pt
+python train.py --batch_size=32 --epochs=20 --model_path="mnist_model.pt"
 ```
 
 ### to sample:
