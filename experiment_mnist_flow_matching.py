@@ -44,11 +44,12 @@ def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False):
 if __name__ == "__main__":
     (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
     visualize_n_samples(X_train, y_train, n=5)
-    model = FlowMatching(model_type='small', dimensionality=2)
+    model = FlowMatching(model_type='medium', dimensionality=2)
     model.train(X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
     generated_images = model.generate(num_samples=500, device='mps', number_of_steps=25)
     visualize_n_samples(generated_images, n=5)
 
     # Example: Load from checkpoint and generate
-    # generated_images = example_load_and_generate('checkpoints/unet_small_epoch_20.pth', num_samples=5, device='mps')
-    # visualize_n_samples(generated_images, n=min(5, len(generated_images)))
+    model = FlowMatching(model_type='medium', load_from_path='checkpoints/unet_medium_epoch_50.pth', dimensionality=2)
+    generated_images = model.generate(num_samples=15, device='mps', number_of_steps=25)
+    visualize_n_samples(generated_images, n=min(15, len(generated_images)))

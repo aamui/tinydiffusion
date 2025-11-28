@@ -1,5 +1,6 @@
 from synthetic_images import evaluate_saved_model, generate_synthetic_dataset, visualize_n_samples
-from model_flow_matching import FlowMatching
+from model_vae import VAE
+
 
 
 def training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=512, use_wandb=True, unet_type='small'):
@@ -8,10 +9,10 @@ def training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epo
 
     visualize_n_samples(X_test, y_test, n=15)
 
-    model = FlowMatching(model_type=unet_type, dimensionality=2)
+    model = VAE()
     model.train(X_train, y_train, X_test, y_test, num_epochs=num_epochs, use_wandb=use_wandb, device=device, batch_size=batch_size)
-
-    generated_images = model.generate(num_samples=500, device=device, number_of_steps=25)
+    
+    generated_images = model.generate_dataset(num_samples=500, device=device)
     visualize_n_samples(generated_images, n=5)
 
     return model
