@@ -1,10 +1,10 @@
 import numpy as np
-from mnist_experiments_jan import visualize_n_samples, train_model, generate_with_model, UNetSmall, example_load_and_generate
 import torch
 import matplotlib.pyplot as plt
 import random
 from tqdm import tqdm
-from unet import UNetSmall, UNetMedium
+from experiment_mnist_flow_matching import visualize_n_samples
+from model_flow_matching import FlowMatching
 
 
 def check_for_availability(grid, p, orientation):
@@ -72,21 +72,6 @@ def generate_synthetic_dataset(num_samples):
     return torch.tensor(np.array(images)), torch.tensor(np.array(labels))
 
 
-def training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=512, use_wandb=True, unet_type='small'):
-    X_train, y_train = generate_synthetic_dataset(num_train_samples)
-    X_test, y_test = generate_synthetic_dataset(num_test_samples)
-
-    # visualize_n_samples(X_test, y_test, n=15)
-
-    model = UNetSmall() if unet_type == 'small' else UNetMedium()
-    train_model(model, X_train, y_train, X_test, y_test, num_epochs=num_epochs, use_wandb=use_wandb, device=device, batch_size=batch_size, unet_type=unet_type)
-
-    # generated_images = generate_with_model(model)
-    # visualize_n_samples(generated_images, n=5)
-
-    return model
-
-
 def create_histogram(detected_counts, y_test):
     plt.figure()
     plt.hist(detected_counts, bins=range(min(detected_counts), max(detected_counts) + 2), alpha=0.5, label='Detected Counts')
@@ -122,7 +107,8 @@ def evaluate_saved_model(checkpoint_path, test_size=100000, device='mps', number
     X_test, y_test = generate_synthetic_dataset(test_size)
     visualize_n_samples(X_test, y_test, n=num_visualize)
 
-    generated_images = example_load_and_generate(checkpoint_path, num_samples=test_size, device=device, number_of_steps=number_of_steps, model_type='medium' if 'medium' in checkpoint_path else 'small')
+    model = FlowMatching(model_type='medium' if 'medium' in checkpoint_path else 'small', dimensionality=2, load_from_path=checkpoint_path)
+    generated_images = model.generate(num_samples=test_size, device=device, number_of_steps=number_of_steps)
     detected_counts = count_white_pixels(generated_images)
     visualize_n_samples(generated_images, n=min(num_visualize, len(generated_images)), output_binarization=True, y_train=detected_counts)
 
@@ -131,8 +117,3 @@ def evaluate_saved_model(checkpoint_path, test_size=100000, device='mps', number
 
     return generated_images, detected_counts, y_test
 
-
-if __name__ == "__main__":
-    # training_pipeline(num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=256, use_wandb=True, unet_type='medium')
-
-    evaluate_saved_model('checkpoints/unet_medium_epoch_50.pth', test_size=100000, device='mps', number_of_steps=25)
