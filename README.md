@@ -1,4 +1,4 @@
-<img width="1470" height="956" alt="image" src="https://github.com/user-attachments/assets/dce312eb-9aa1-44d0-a585-bc94bb8549c3" /># tinydiffusion
+# tinydiffusion
 cs274E project repository
 
 ## DDIM
