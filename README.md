@@ -1,8 +1,8 @@
 # tinydiffusion
 cs274E project repository
 
-## To run ddim:
-
+## DDIM
+### To train ddim:
 train.py args:
 
   --batch_size (default = 64)
@@ -16,3 +16,5 @@ train.py args:
 cd ddim
 python train.py --batch_size=32 --epochs=20
 ```
+
+### to sample:
