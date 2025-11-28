@@ -81,8 +81,8 @@ class DiffusionCNN(nn.Module):
         self.mid2 = ResidualBlock(base_channels * 2, base_channels * 2, time_emb_dim)
         
         # up sample
-        self.up1 = ResidualBlock(base_channels * 2, base_channels * 2, time_emb_dim)
-        self.up2 = ResidualBlock(base_channels * 2, base_channels, time_emb_dim)
+        self.up1 = ResidualBlock(base_channels * 2, base_channels, time_emb_dim)
+        self.up2 = ResidualBlock(base_channels, base_channels, time_emb_dim)
         self.upsample = nn.Upsample(scale_factor=2, mode='nearest')
         
         # out conv

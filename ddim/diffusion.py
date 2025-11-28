@@ -39,7 +39,7 @@ class diffusion:
 	def train_epoch(self, dataloader, optimizer):
 		self.model.train()
 		total_loss = 0
-		for batch in dataloader:
+		for batch, labels in dataloader:
 			# assumes batch is just images
 			loss = self.train_step(batch, optimizer)
 			total_loss += loss
@@ -53,6 +53,7 @@ class diffusion:
 		self.model.eval()
 		channels, h, w = shape
 		img = (bs, channels, h, w)
+		step_size = self.noise_scheduler.timesteps // inference_steps
 
 		sample_ratio = self.noise_scheduler.timesteps // inference_steps
 		sample_timesteps = torch.arange(0, self.noise_scheduler.timesteps, sample_ratio, device = self.device) # for example [0, 50, 100, 150, ...1000]
@@ -60,13 +61,18 @@ class diffusion:
 
 		x = torch.randn(img, device = self.device)
 		for i, t in enumerate(sample_timesteps):
+			prev_t = t - step_size
 			t_batched = torch.full((bs,), t, device = self.device)
+			prev_t_batched = torch.full((bs,), prev_t, device=self.device)
 			pred_noise = self.model(x, t_batched)
 			sqrt_one_minus_alphas_cumprod_t = extract(self.noise_scheduler.sqrt_one_minus_alphas_cumprod, t_batched, x.shape)
 			sqrt_inv_alphas_cumprod_t = extract(self.noise_scheduler.sqrt_inv_alphas_cumprod, t_batched, x.shape)
 			pred_x0 = (x - sqrt_one_minus_alphas_cumprod_t * pred_noise) * sqrt_inv_alphas_cumprod_t
 
-			alphas_cumprod_prev_t = extract(self.noise_scheduler.alphas_cumprod_prev, t_batched, x.shape)
+			if prev_t >= 0:
+				alphas_cumprod_prev_t = extract(self.noise_scheduler.alphas_cumprod, prev_t_batched, x.shape)
+			else:
+				alphas_cumprod_prev_t = torch.ones_like(sqrt_one_minus_alphas_cumprod_t)
 			x = torch.sqrt(alphas_cumprod_prev_t) * pred_x0 + (torch.sqrt(1 - alphas_cumprod_prev_t) * pred_noise)
 		return x
 
