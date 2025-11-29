@@ -36,3 +36,34 @@ ddim_sample.py args:
 cd ddim
 python sample_ddim.py --num_samples=10 --model_path="./results/ddim_mnist_model.pt" --save_file="images.png"
 ```
+
+
+## GAN
+### to train GAN:
+train_gan.py args:
+
+ --batch_size (default 64)
+
+ --epochs (default 100)
+
+ --model_path (what you want saved model to be named)
+
+```
+cd gan
+python train_gan.py --batch_size=16 --epochs=50 --model_path=the_gan.pt
+```
+
+### to sample GAN:
+sample_gan.py args:
+
+ --num_samples
+
+ --model_path (saved trained model path)
+
+ --save_file (file name of samples png)
+
+```
+cd gan
+python sample_gan.py --num_samples=10 --model_path=test.pt --save_file=my_samples.png
+```
+ 
