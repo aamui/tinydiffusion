@@ -91,8 +91,8 @@ class diffusion:
 	def ddim_sample(self, bs, shape, inference_steps):
 		# shape should be same as img we want. ie Mnist - bs, 1, 28, 28
 		self.model.eval()
-		channels, h, w = shape
-		img = (bs, channels, h, w)
+		channel, h, w = shape
+		img = (bs, channel, h, w)
 		step_size = self.noise_scheduler.timesteps // inference_steps
 
 		sample_ratio = self.noise_scheduler.timesteps // inference_steps
@@ -115,6 +115,7 @@ class diffusion:
 				alphas_cumprod_prev_t = torch.ones_like(sqrt_one_minus_alphas_cumprod_t)
 			x = torch.sqrt(alphas_cumprod_prev_t) * pred_x0 + (torch.sqrt(1 - alphas_cumprod_prev_t) * pred_noise)
 		return x
+
 
 
 

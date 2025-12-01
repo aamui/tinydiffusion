@@ -93,6 +93,7 @@ class DiffusionCNN(nn.Module):
         )
     
     def forward(self, x, timesteps):
+
         t_emb = self.time_embedding(timesteps)
         t_emb = self.time_mlp(t_emb)
         
@@ -115,6 +116,6 @@ class DiffusionCNN(nn.Module):
         h = h + h1                      
         h = self.up2(h, t_emb)         
         
-        h = self.conv_out(h)            
-        
+        h = self.conv_out(h)           
+
         return h
