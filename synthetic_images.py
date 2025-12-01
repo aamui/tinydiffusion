@@ -70,6 +70,16 @@ def generate_synthetic_dataset(num_samples):
         labels.append(label)
     return torch.tensor(np.array(images)), torch.tensor(np.array(labels))
 
+def generate_synthetic_dataset_channel_normalize(num_samples):
+    images = []
+    labels = []
+    for _ in tqdm(range(num_samples)):
+        img, label = generate_synthetic_image()
+        images.append(img)
+        labels.append(label)
+    img = torch.tensor(np.array(images)).unsqueeze(1)
+    img = (img - 0.5) / 0.5
+    return img, torch.tensor(np.array(labels))
 
 def create_histogram(detected_counts, y_test):
     plt.figure()
