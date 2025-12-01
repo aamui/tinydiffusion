@@ -77,12 +77,13 @@ class dcgan(nn.Module):
         batch_size = real_imgs.size(0)
         device = real_imgs.device
 
-        real_labels = torch.ones(batch_size, 1, device=device) * 0.9
-        fake_labels = torch.zeros(batch_size, 1, device=device)
+        real_labels = torch.ones(batch_size, 1, device=device) * 0.75
+        #fake_labels = torch.zeros(batch_size, 1, device=device)
+        fake_labels = torch.ones(batch_size, 1, device=device) * 0.1
         criterion = nn.BCELoss()
 
         # training discriminator
-        for i in range(dsteps):
+        for _ in range(dsteps):
             opt_D.zero_grad()
 
             d_loss_real = criterion(self.D(real_imgs), real_labels)

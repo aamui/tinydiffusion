@@ -97,7 +97,7 @@ class diffusion:
                 test_avg_loss = self.eval_epoch(test_data_loader)
                 print(f'After Epoch {epoch + 1}/{num_epochs} |  Test Loss: {test_avg_loss:.4f}')
         os.makedirs(checkpoint_dir, exist_ok=True)
-        torch.save(self.model.state_dict(), f"{checkpoint_dir}/ddim_epoch_{nun_epochs}.pt")
+        torch.save(self.model.state_dict(), f"{checkpoint_dir}/ddim_epoch_{num_epochs}.pt")
 
 
     @torch.no_grad()
