@@ -45,12 +45,14 @@ if __name__ == "__main__":
     encoder = Encoder(in_ch=1, latent_ch=4)
     decoder = Decoder(out_ch=1, latent_ch=4)
 
-    model = LatentFlowMatching()
+    model = LatentFlowMatching(model_type='medium')
     model.train_autoencoder(encoder, decoder, X_train, X_test, num_epochs=5, device=device, batch_size=256)
 
     # Train Latent Flow Matching
     model.train_lfm(encoder, decoder, X_train, y_train, X_test, y_test, num_epochs=150, device=device, batch_size=512)
 
     # Sample
+    model = LatentFlowMatching(model_type='medium', load_from_path='checkpoints/latent_flow_epoch_150.pth', dimensionality=2)
     generated = model.generate_with_model(decoder, num_samples=10, number_of_steps=100, device=device, latent_ch=4, latent_hw=7)
+
     visualize_n_samples(generated, n=5, title="LFM Generated")

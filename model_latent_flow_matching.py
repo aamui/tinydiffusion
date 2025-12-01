@@ -62,29 +62,36 @@ class Decoder(nn.Module):
         return x_hat
 
 class UNetSmall(nn.Module):
-    def __init__(self, in_ch=4, base_ch=32, time_emb_dim=64):
+    def __init__(self, in_ch=4, base_ch=64, time_emb_dim=128, load_from_path=None):
         super().__init__()
 
         # time embedding
         self.time_mlp = nn.Sequential(
             nn.Linear(1, time_emb_dim),
             nn.SiLU(),
-            nn.Linear(time_emb_dim, base_ch)  # project to base_ch for add
+            nn.Linear(time_emb_dim, base_ch)  
         )
 
         # Encoder
-        self.enc1 = ConvBlock(in_ch, base_ch)         # -> [B, base_ch, 7,7]
-        self.enc2 = ConvBlock(base_ch, base_ch * 2)   # pooling은 생략(해상도 이미 7x7)
+        self.enc1 = ConvBlock(in_ch, base_ch)        
+        self.enc2 = ConvBlock(base_ch, base_ch * 2)   
+        self.pool = nn.AvgPool2d(2)
 
         # Bottleneck
         self.bottleneck = ConvBlock(base_ch * 2, base_ch * 4)
 
         # Decoder (skip-concat)
+        self.up = nn.Upsample(scale_factor=2, mode='nearest')
         self.dec1 = ConvBlock(base_ch * 4 + base_ch * 2, base_ch * 2)
         self.dec2 = ConvBlock(base_ch * 2 + base_ch, base_ch)
 
         # Output in latent space
         self.out = nn.Conv2d(base_ch, in_ch, 1)
+
+        # Load checkpoint if path is provided
+        if load_from_path is not None:
+            self.load_state_dict(torch.load(load_from_path, map_location='cpu'))
+            print(f"Loaded model from {load_from_path}")
 
     def forward(self, z_t, t):
         """
@@ -107,8 +114,10 @@ class UNetSmall(nn.Module):
 
 
 class LatentFlowMatching(Model):
-    def __init__(self, load_from_path=None, dimensionality=2):
-        self.model = UNetSmall()
+    def __init__(self, model_type="small", load_from_path=None):
+        self.model_type = model_type
+        self.model = UNetSmall(load_from_path=load_from_path)
+
 
     def train_autoencoder(self, encoder, decoder, X_train, X_test, num_epochs=5, device='cpu', batch_size=256):
         encoder.to(device); decoder.to(device)
@@ -147,7 +156,7 @@ class LatentFlowMatching(Model):
         encoder.to('cpu'); decoder.to('cpu')
 
     def train_lfm(self, encoder, decoder, X_train, y_train, X_test, y_test,
-                num_epochs=10, device='cpu', batch_size=512):
+                num_epochs=10, device='cpu', batch_size=512, checkpoint_dir='checkpoints'):
         # freeze AE
         encoder.to(device).eval()
         decoder.to(device).eval()
@@ -211,6 +220,7 @@ class LatentFlowMatching(Model):
             avg_v = sum(v_losses) / len(v_losses)
             print(f"[LFM] Epoch {epoch+1} - train {avg_tr:.4f} | val {avg_v:.4f}")
 
+        torch.save(self.model.state_dict(), f"{checkpoint_dir}/latent_flow_epoch_{epoch+1}.pth")
         self.model.to('cpu')
 
     def generate_with_model(self, decoder, num_samples=5, number_of_steps=100,
