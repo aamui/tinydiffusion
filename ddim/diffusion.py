@@ -1,5 +1,11 @@
 import torch
-from noise_schedule import extract
+import os
+from .noise_schedule import extract
+from tqdm import tqdm
+from .networks import DiffusionCNN
+from .noise_schedule import NoiseScheduler
+
+
 
 
 class diffusion:
@@ -45,6 +51,40 @@ class diffusion:
 			total_loss += loss
 		batch_avg_loss = total_loss / len(dataloader)
 		return batch_avg_loss 
+
+	def eval_epoch(self, dataloader):
+		self.model.eval()
+		total_loss = 0
+		loss_fn = torch.nn.MSELoss()
+		for batch, labels in dataloader:
+			batch = batch.to(self.device)
+			bs = batch.shape[0]
+			t = torch.randint(0, self.noise_scheduler.timesteps, (bs,), device=self.device)
+			xt, noise = self.forward_diffusion(batch, t)
+			pred_noise = self.model(xt, t)
+			loss = loss_fn(pred_noise, noise)
+			total_loss += loss.item()
+		return total_loss / len(dataloader)
+
+	def train(self, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=False, batch_size=32, checkpoint_dir='checkpoints', noise_schedule = 'linear'):
+
+		train_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_train.to(self.device), y_train.to(self.device)), 
+			batch_size=batch_size, shuffle=True)
+
+		test_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_test.to(self.device), y_test.to(self.device)), 
+			batch_size=batch_size, shuffle=False)
+
+		optimizer = torch.optim.AdamW(self.model.parameters(), lr = 1e-4)
+
+		for epoch in tqdm(range(num_epochs)):
+			avg_loss = self.train_epoch(train_data_loader, optimizer)
+			print(f"Epoch {epoch+1}/{num_epochs} | Train Loss: {avg_loss:.4f}")
+
+			with torch.no_grad():
+				test_avg_loss = self.eval_epoch(test_data_loader)
+				print(f'After Epoch {epoch + 1}/{num_epochs} |  Test Loss: {test_avg_loss:.4f}')
+		os.makedirs(checkpoint_dir, exist_ok=True)
+		torch.save(self.model.state_dict(), f"{checkpoint_dir}/ddim_epoch_{epoch+1}.pt")
 
 
 	@torch.no_grad()
