@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-
+import os
+from tqdm import tqdm
 
 class generator(nn.Module):
 	def __init__(self, latent_dim = 100, channels = 1):
@@ -102,6 +103,7 @@ class dcgan(nn.Module):
 		return {'d_loss': d_loss.item(), 'g_loss': g_loss.item()}
 
 	def train_epoch(self, dataloader, opt_G, opt_D, dsteps = 1):
+		self.train()
 		total_g_loss = 0
 		total_d_loss = 0
 
@@ -114,10 +116,29 @@ class dcgan(nn.Module):
 		return {'d_loss': total_d_loss / n, 'g_loss': total_g_loss / n}
 
 
+	def train_model(self, X_train, y_train, X_test, y_test, num_epochs = 1, use_wandb = False, batch_size = 32, checkpoint_dir = 'checkpoints'):
+		train_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_train.to(self.device), y_train.to(self.device)), 
+			batch_size=batch_size, shuffle=True)
+
+		test_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_test.to(self.device), y_test.to(self.device)), 
+			batch_size=batch_size, shuffle=False)
+
+		opt_G = torch.optim.Adam(self.G.parameters(), lr=2e-4, betas=(0.5, 0.999))
+		opt_D = torch.optim.Adam(self.D.parameters(), lr=2e-4, betas=(0.5, 0.999))
+
+		for epoch in tqdm(range(num_epochs)):
+			losses = self.train_epoch(train_data_loader, opt_G, opt_D, dsteps=1)
+			print(f"Epoch {epoch+1}/{num_epochs} | D: {losses['d_loss']:.4f} | G: {losses['g_loss']:.4f}")
+
+		os.makedirs(checkpoint_dir, exist_ok=True)
+		torch.save(self.state_dict(), f"{checkpoint_dir}/gan_epoch_{epoch+1}.pt")
+
+
 
 	@torch.no_grad()
 	def sample(self, num_samples, device='mps'):
-		z = torch.randn(num_samples, self.latent_dim, device=device)
+		self.G.eval()
+		z = torch.randn(num_samples, self.latent_dim, device=self.device)
 		return self.G(z)
 
 

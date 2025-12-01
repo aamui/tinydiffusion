@@ -11,7 +11,7 @@ from torchvision import transforms
 
 
 def load_mnist_datasets():
-    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.50,), (0.50,))])
     train_dataset = torchvision.datasets.MNIST(root='./data', train=True, download=True, transform=transform)
     test_dataset = torchvision.datasets.MNIST(root='./data', train=False, download=True, transform=transform)
 
