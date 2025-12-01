@@ -52,11 +52,11 @@ if __name__ == "__main__":
     (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
     visualize_n_samples(X_train, y_train, n=5, file_name="train_samples.pdf")
     model = FlowMatching(model_type='medium', dimensionality=2)
-    model.train_function(X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
-    generated_images = model.generate(num_samples=500, device='mps', number_of_steps=25)
+    model.train_function(X_train, y_train, X_test, y_test, num_epochs=3, use_wandb=True, device='mps', batch_size=512)
+    generated_images = model.generate(num_samples=500, device='mps')
     visualize_n_samples(generated_images, n=5, file_name="generated_samples.pdf")
 
     # Example: Load from checkpoint and generate
-    model = FlowMatching(model_type='medium', load_from_path='checkpoints/unet_medium_epoch_50.pth', dimensionality=2)
-    generated_images = model.generate(num_samples=15, device='mps', number_of_steps=25)
+    model = FlowMatching(model_type='medium', load_from_path='checkpoints/unet_medium_epoch_3.pth', dimensionality=2)
+    generated_images = model.generate(num_samples=15, device='mps')
     visualize_n_samples(generated_images, n=min(15, len(generated_images)), file_name="generated_samples_from_checkpoint.pdf")
