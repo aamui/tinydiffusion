@@ -52,7 +52,7 @@ def main():
 	noise_scheduler = NoiseScheduler(timesteps = timesteps, schedule = args.noise_schedule)
 	diff = diffusion(model, noise_scheduler, device = device)
 	# epochs = 20
-	diff.train(X_train, y_train, X_test, y_test, num_epochs = args.epochs, use_wandb=False, batch_size=args.batch_size, checkpoint_dir='checkpoints')
+	diff.train_function(X_train, y_train, X_test, y_test, num_epochs = args.epochs, use_wandb=False, batch_size=args.batch_size, checkpoint_dir='checkpoints')
 	print('Training done!')
 
 	print('Sampling...')
