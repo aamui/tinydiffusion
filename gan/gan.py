@@ -72,7 +72,7 @@ class dcgan(nn.Module):
 		batch_size = real_imgs.size(0)
 		device = real_imgs.device
 
-		real_labels = torch.ones(batch_size, 1, device=device)
+		real_labels = torch.ones(batch_size, 1, device=device) * 0.9
 		fake_labels = torch.zeros(batch_size, 1, device=device)
 		criterion = nn.BCELoss()
 
@@ -86,7 +86,7 @@ class dcgan(nn.Module):
 			fake_imgs = self.G(z).detach()
 			d_loss_fake = criterion(self.D(fake_imgs), fake_labels)
 
-			d_loss = d_loss_real + d_loss_fake
+			d_loss = (d_loss_real + d_loss_fake) / 2
 			d_loss.backward()
 			opt_D.step()
 
@@ -116,7 +116,7 @@ class dcgan(nn.Module):
 		return {'d_loss': total_d_loss / n, 'g_loss': total_g_loss / n}
 
 
-	def train_model(self, X_train, y_train, X_test, y_test, num_epochs = 1, use_wandb = False, batch_size = 32, checkpoint_dir = 'checkpoints'):
+	def train_model(self, X_train, y_train, X_test, y_test, dsteps = 1, num_epochs = 1, use_wandb = False, batch_size = 32, checkpoint_dir = 'checkpoints'):
 		train_data_loader = torch.utils.data.DataLoader(torch.utils.data.TensorDataset(X_train.to(self.device), y_train.to(self.device)), 
 			batch_size=batch_size, shuffle=True)
 
@@ -127,7 +127,7 @@ class dcgan(nn.Module):
 		opt_D = torch.optim.Adam(self.D.parameters(), lr=2e-4, betas=(0.5, 0.999))
 
 		for epoch in tqdm(range(num_epochs)):
-			losses = self.train_epoch(train_data_loader, opt_G, opt_D, dsteps=1)
+			losses = self.train_epoch(train_data_loader, opt_G, opt_D, dsteps=dsteps)
 			print(f"Epoch {epoch+1}/{num_epochs} | D: {losses['d_loss']:.4f} | G: {losses['g_loss']:.4f}")
 
 		os.makedirs(checkpoint_dir, exist_ok=True)

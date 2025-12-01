@@ -25,10 +25,12 @@ def load_mnist_datasets():
 
 	return (X_train, y_train), (X_test, y_test)
 
-
-
-
-if __name__ == "__main__":
+def main():
+	parser = argparse.ArgumentParser(description="Train a GAN")
+	parser.add_argument("--batch_size", type=int, default=64, help="Batch size for training")
+	parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
+	parser.add_argument("--dsteps", type=int, default=2, help="Number of discriminator steps")
+	args = parser.parse_args()
 
 	(X_train, y_train), (X_test, y_test) = load_mnist_datasets()
 	
@@ -39,9 +41,12 @@ if __name__ == "__main__":
 	else:
 		device = "cpu"
 	print(f"Using device: {device}")
-	epochs = 1
+	print(f'Total training epochs: {args.epochs}')
+	print(f'Training batch size: {args.batch_size}')
+	print(f'Discriminator steps: {args.dsteps}')
+
 	gan = dcgan(latent_dim=100, channels=1, device = device).to(device)
-	gan.train_model(X_train, y_train, X_test, y_test, num_epochs = epochs, use_wandb=False, batch_size=32, checkpoint_dir='checkpoints')	
+	gan.train_model(X_train, y_train, X_test, y_test, dsteps = args.dsteps, num_epochs = args.epochs, use_wandb=False, batch_size=args.batch_size, checkpoint_dir='checkpoints')	
 	print('Training done!')
 
 	print('Sampling...')
@@ -51,10 +56,16 @@ if __name__ == "__main__":
 	samples = torch.clamp(samples, 0, 1)
 	grid = make_grid(samples, nrow = 8)
 	os.makedirs('samples', exist_ok=True)
-	samples_path = os.path.join('samples', f'gan_epochs{epochs}.png')
+	samples_path = os.path.join('samples', f'gan_epochs{args.epochs}.png')
 	save_image(grid, samples_path)
 
 	print(f'Samples saved to {samples_path}')
+
+
+
+
+if __name__ == "__main__":
+	main()
 
 
 
