@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import random
 from tqdm import tqdm
 from experiment_mnist_flow_matching import visualize_n_samples
-from model_flow_matching import FlowMatching
 
 
 def check_for_availability(grid, p, orientation):
@@ -78,7 +77,9 @@ def create_histogram(detected_counts, y_test):
     plt.hist(y_test.numpy(), bins=range(y_test.min().item(), y_test.max().item() + 2), alpha=0.5, label='True Counts')
     plt.title("Histogram of Detected Counts vs True Counts")
     plt.legend()
-    plt.show()
+    plt.savefig("plots/histogram_detected_vs_true_counts.pdf")
+    plt.clf()
+    plt.close()
 
 
 def create_qq_plot(detected_counts, y_test):
@@ -100,17 +101,19 @@ def create_qq_plot(detected_counts, y_test):
     plt.title('QQ Plot: Detected Counts vs True Counts')
     plt.legend()
     plt.grid(True, alpha=0.3)
-    plt.show()
+    plt.savefig(f"plots/qq_plot_detected_vs_true_counts.pdf")
+    plt.clf()
+    plt.close()
 
 
-def evaluate_saved_model(checkpoint_path, test_size=100000, device='mps', number_of_steps=25, num_visualize=15):
+def evaluate_saved_model(model_class, checkpoint_path, test_size=100000, device='mps', num_visualize=15):
     X_test, y_test = generate_synthetic_dataset(test_size)
-    visualize_n_samples(X_test, y_test, n=num_visualize)
+    visualize_n_samples(X_test, y_test, n=num_visualize, file_name=f"test_samples_{model_class.__name__}.pdf")
 
-    model = FlowMatching(model_type='medium' if 'medium' in checkpoint_path else 'small', dimensionality=2, load_from_path=checkpoint_path)
-    generated_images = model.generate(num_samples=test_size, device=device, number_of_steps=number_of_steps)
+    model = model_class(load_from_path=checkpoint_path)
+    generated_images = model.generate_dataset(num_samples=test_size, device=device)
     detected_counts = count_white_pixels(generated_images)
-    visualize_n_samples(generated_images, n=min(num_visualize, len(generated_images)), output_binarization=True, y_train=detected_counts)
+    visualize_n_samples(generated_images, n=min(num_visualize, len(generated_images)), output_binarization=True, y_train=detected_counts, file_name=f"generated_samples_{model_class.__name__}.pdf")
 
     create_histogram(detected_counts, y_test)
     create_qq_plot(detected_counts, y_test)

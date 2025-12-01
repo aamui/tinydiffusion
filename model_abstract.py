@@ -6,7 +6,7 @@ class Model:
     def __init__(self, *args, **kwargs):
         print("Initializing abstract Model class.")
 
-    def _prepare_training(self, X_train, y_train, X_test, y_test, checkpoint_dir, batch_size, device):
+    def _prepare_train_function(self, X_train, y_train, X_test, y_test, checkpoint_dir, batch_size, device):
         os.makedirs(checkpoint_dir, exist_ok=True)
 
         train_data_loader = torch.utils.data.DataLoader(
@@ -23,7 +23,7 @@ class Model:
         return train_data_loader, test_data_loader, loss_function
 
 
-    def train(self, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, 
+    def train_function(self, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, 
               device='cpu', batch_size=32):
         raise NotImplementedError("Train method must be implemented by subclasses.")
 

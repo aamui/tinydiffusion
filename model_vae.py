@@ -79,7 +79,7 @@ class VAE(nn.Module, Model):
         z = torch.randn(num_samples, self.latent_dim, device=device)
         return self.decode(z)
 
-    def train(self, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, 
+    def train_function(self, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, 
               device='cpu', batch_size=32, checkpoint_dir='checkpoints', kl_weight=1e-3):
         if use_wandb:
             wandb.init(project="mnist-diffusion", name=f"unet-{self.model_type}-mse-loss")
@@ -87,7 +87,7 @@ class VAE(nn.Module, Model):
 
         self.to(device)
 
-        train_data_loader, test_data_loader, _ = self._prepare_training(X_train, y_train, X_test, y_test, checkpoint_dir, batch_size, device)
+        train_data_loader, test_data_loader, _ = self._prepare_train_function(X_train, y_train, X_test, y_test, checkpoint_dir, batch_size, device)
         # Use BCEWithLogitsLoss for numerical stability (expects logits, not probabilities)
         loss_function = nn.BCEWithLogitsLoss()
 
