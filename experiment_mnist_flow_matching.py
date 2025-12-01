@@ -4,6 +4,7 @@ import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from model_flow_matching import FlowMatching
+import os
 
 
 def load_mnist_datasets():
@@ -22,7 +23,11 @@ def load_mnist_datasets():
     return (X_train, y_train), (X_test, y_test)
 
 
-def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False):
+def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False, file_name="please_specify_filename.pdf"):
+    if not os.path.exists("plots"):
+        os.makedirs("plots")
+    file_name = os.path.join("plots", file_name)
+
     if output_binarization:
         X_train = (X_train > 0.5).float()
 
@@ -38,18 +43,20 @@ def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False):
         axes[i // 5, i % 5].imshow(image.squeeze(), cmap='gray')
         axes[i // 5, i % 5].set_title(f'Label: {label}')
         axes[i // 5, i % 5].axis('off')
-    plt.show()
+    plt.savefig(file_name)
+    plt.clf()
+    plt.close()
 
 
 if __name__ == "__main__":
     (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
-    visualize_n_samples(X_train, y_train, n=5)
+    visualize_n_samples(X_train, y_train, n=5, file_name="train_samples.pdf")
     model = FlowMatching(model_type='medium', dimensionality=2)
-    model.train(X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
+    model.train_function(X_train, y_train, X_test, y_test, num_epochs=50, use_wandb=True, device='mps', batch_size=512)
     generated_images = model.generate(num_samples=500, device='mps', number_of_steps=25)
-    visualize_n_samples(generated_images, n=5)
+    visualize_n_samples(generated_images, n=5, file_name="generated_samples.pdf")
 
     # Example: Load from checkpoint and generate
     model = FlowMatching(model_type='medium', load_from_path='checkpoints/unet_medium_epoch_50.pth', dimensionality=2)
     generated_images = model.generate(num_samples=15, device='mps', number_of_steps=25)
-    visualize_n_samples(generated_images, n=min(15, len(generated_images)))
+    visualize_n_samples(generated_images, n=min(15, len(generated_images)), file_name="generated_samples_from_checkpoint.pdf")

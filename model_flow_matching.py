@@ -8,16 +8,21 @@ from model_abstract import Model
 
 
 class FlowMatching(Model):
-    def __init__(self, model_type='small', load_from_path=None, dimensionality=2):
+    def __init__(self, model_type=None, load_from_path=None, dimensionality=2):
         self.model_type = model_type
         self.dimensionality = dimensionality
+
+        assert model_type is not None or load_from_path is not None, "Either model_type or load_from_path must be provided."
+
+        if model_type is None and load_from_path is not None:
+            model_type = 'medium' if 'medium' in load_from_path else 'small'
 
         if model_type == 'small':
             self.model = UNetSmall(load_from_path=load_from_path)
         else:
             self.model = UNetMedium(load_from_path=load_from_path)
 
-    def train(self, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, 
+    def train_function(self, X_train, y_train, X_test, y_test, num_epochs=1, use_wandb=True, 
               device='cpu', batch_size=32, checkpoint_dir='checkpoints'):
         if use_wandb:
             wandb.init(project="mnist-diffusion", name=f"unet-{self.model_type}-mse-loss")
@@ -25,7 +30,7 @@ class FlowMatching(Model):
 
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4, weight_decay=2e-5)
 
-        train_data_loader, test_data_loader, loss_function = self._prepare_training(X_train, y_train, X_test, y_test, checkpoint_dir, batch_size, device)
+        train_data_loader, test_data_loader, loss_function = self._prepare_train_function(X_train, y_train, X_test, y_test, checkpoint_dir, batch_size, device)
 
         for epoch in tqdm(range(num_epochs)):
             print(f"Running epoch {epoch+1}/{num_epochs}")
@@ -86,7 +91,7 @@ class FlowMatching(Model):
 
         self.model.to('cpu')
 
-    def generate(self, num_samples=5, number_of_steps=100, device='cpu', start_noise=None, sample_shape=(28, 28)):
+    def generate(self, num_samples=5, number_of_steps=25, device='cpu', start_noise=None, sample_shape=(28, 28)):
         if start_noise is None:
             start_noise = torch.randn(num_samples, *sample_shape)
 
@@ -116,7 +121,7 @@ class FlowMatching(Model):
 
         return generated_images.to('cpu')
 
-    def generate_dataset(self, num_samples, number_of_steps=100, device='cpu', 
+    def generate_dataset(self, num_samples, number_of_steps=25, device='cpu', 
                          max_images_per_batch=2048, sample_shape=(28, 28)):
         generated_images = []
 
