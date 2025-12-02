@@ -130,3 +130,10 @@ def evaluate_saved_model(model_class, checkpoint_path, test_size=100000, device=
 
     return generated_images, detected_counts, y_test
 
+def sample_from_model(model_class, checkpoint_path, samples = 100, device = 'mps'):
+    model = model_class(load_from_path = checkpoint_path)
+    generated_images = model.generate_dataset(num_samples = samples, device = device)
+    generated_images = (generated_images > 0.5).float()
+    samples_path = f'samples/{model_class.__name__}_samples.pt'
+    torch.save(generated_images, samples_path)
+    print(f'Samples saved to {samples_path}')
