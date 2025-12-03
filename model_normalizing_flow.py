@@ -108,7 +108,7 @@ class RealNVP(nn.Module):
 
 
 class NormalizingFlow(Model):
-    def __init__(self, dim, hidden_dim=1024, num_flows=8, load_from_path=None):
+    def __init__(self, dim=784, hidden_dim=1024, num_flows=8, load_from_path=None):
         super().__init__()
         self.dim = dim
 

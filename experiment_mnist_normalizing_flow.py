@@ -3,7 +3,9 @@ import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-from model_normalizing_flow import NormalizingFlow
+from model_normalizing_flow2 import NormalizingFlow
+from synthetic_images import visualize_n_samples
+
 
 def load_mnist_datasets():
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
@@ -19,21 +21,6 @@ def load_mnist_datasets():
     y_test = torch.tensor([test_dataset[i][1] for i in range(len(test_dataset))])
 
     return (X_train, y_train), (X_test, y_test)
-
-def visualize_n_samples(X_train, y_train=None, n=5, title="Samples"):
-    X_train = X_train.detach().cpu()
-    fig, axes = plt.subplots(1, 5, figsize=(15, 3))
-    for i in range(5):
-        image = X_train[i]
-        label = y_train[i] if y_train is not None else "Unknown"
-        axes[i].imshow(image.squeeze(), cmap='gray')
-        axes[i].set_title(f'Label: {label}')
-        axes[i].axis('off')
-    
-    if title:
-        fig.suptitle(title)
-    plt.legend()
-    plt.show()
 
 alpha = 1e-6
 
@@ -56,28 +43,30 @@ def postprocess_y(y):
     return x
 
 if __name__ == "__main__":
-    device = 'mps' if torch.backends.mps.is_available() else ('cuda' if torch.cuda.is_available() else 'cpu')
-    (X_train, y_train), (X_test, y_test) = load_mnist_datasets()
+    device = 'mps' if torch.backends.mps.is_available() else (
+        'cuda' if torch.cuda.is_available() else 'cpu'
+    )
 
-    # # Flatten to [B, D]
-    # X_train = X_train.view(X_train.size(0), -1)
-    # X_test  = X_test.view(X_test.size(0), -1)
+    (X_train, y_train), (X_test, y_test) = load_mnist_datasets()  
 
-    # main 쪽
-    (X_train, _), (X_test, _) = load_mnist_datasets()
-    X_train = preprocess_x(X_train).view(X_train.size(0), -1)
-    X_test  = preprocess_x(X_test).view(X_test.size(0), -1)
+    X_train = preprocess_x(X_train)  
+    X_test  = preprocess_x(X_test)
 
+    X_train = X_train.view(X_train.size(0), -1)
+    X_test  = X_test.view(X_test.size(0), -1)
 
-    nf_model = NormalizingFlow(dim=X_train.size(1))
-    nf_model.train_nf(X_train, X_test, num_epochs=150, device=device)
+    dim = X_train.size(1)  # 784
+    nf_model = NormalizingFlow(dim=dim, num_classes=10)
 
-    # Sample
-    # samples = nf_model.generate_with_model(num_samples=16, device=device) 
-    # samples = samples.view(-1, 1, 28, 28) 
+    nf_model.train_function(
+        X_train, y_train,
+        X_test, y_test,
+        num_epochs=10,
+        device=device
+    )
 
-    samples = nf_model.generate_with_model(num_samples=16, device=device)  # [16,D]
-    samples = postprocess_y(samples)
-    samples = samples.view(-1, 1, 28, 28)
-    
-    visualize_n_samples(samples, n=5, title="NF Generated")
+    num_samples = 16
+    samples = nf_model.generate(num_samples=num_samples, device=device)  
+    samples = postprocess_y(samples)                 
+    samples = samples.view(-1, 1, 28, 28)            
+    visualize_n_samples(samples, n=5, file_name="generated_samples.pdf")

@@ -16,8 +16,12 @@ def training_pipeline(model_class, num_train_samples=500000, num_test_samples=10
     return model
 
 def training_pipeline_lfm(model_class, num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=512, **kwargs):
-    X_train, y_train = generate_synthetic_dataset(num_train_samples)
-    X_test, y_test = generate_synthetic_dataset(num_test_samples)
+    # X_train, y_train = generate_synthetic_dataset(num_train_samples)
+    # X_test, y_test = generate_synthetic_dataset(num_test_samples)
+
+    X_train, y_train = generate_synthetic_dataset(500000, use_saved=False, save_path="./data/syntetic_data_normal_train.pt", normalize=True )
+    X_test, y_test = generate_synthetic_dataset(100000, use_saved=False, save_path="./data/syntetic_data_normal_test.pt", normalize=True)
+
 
     visualize_n_samples(X_test, y_test, n=15, file_name="lfm_test_samples.pdf")
 
@@ -30,15 +34,44 @@ def training_pipeline_lfm(model_class, num_train_samples=500000, num_test_sample
 
     return model
 
+# def training_pipeline_nf(model_class, num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=512, **kwargs):
+#     # X_train, y_train = generate_synthetic_dataset(num_train_samples)
+#     # X_test, y_test = generate_synthetic_dataset(num_test_samples)
+
+#     X_train, y_train = generate_synthetic_dataset(num_train_samples, use_saved=True, save_path="./data/synthetic/syntetic_data_normal_train.pt", normalize=True )
+#     X_test, y_test = generate_synthetic_dataset(num_test_samples, use_saved=True, save_path="./data/synthetic/syntetic_data_normal_test.pt", normalize=True)
+
+
+#     visualize_n_samples(X_test, y_test, n=15, file_name="nf_test_samples.pdf")
+
+#     model = model_class(**kwargs)
+#     X_train = X_train.view(X_train.size(0), -1)
+#     X_test  = X_test.view(X_test.size(0), -1)
+#     model.train_function(X_train, X_test, num_epochs=num_epochs, device=device, batch_size=batch_size)
+
+#     generated_images = model.generate_dataset(num_samples=500, device=device)
+#     visualize_n_samples(generated_images, n=5, file_name="nf_generated_samples.pdf")
+
+#     return model
+
+
 def training_pipeline_nf(model_class, num_train_samples=500000, num_test_samples=100000, num_epochs=50, device='mps', batch_size=512, **kwargs):
-    X_train, y_train = generate_synthetic_dataset(num_train_samples)
-    X_test, y_test = generate_synthetic_dataset(num_test_samples)
+
+    X_train, y_train = generate_synthetic_dataset(num_train_samples, use_saved=True, save_path="./data/synthetic/syntetic_data_normal_train.pt", normalize=True )
+    X_test, y_test = generate_synthetic_dataset(num_test_samples, use_saved=True, save_path="./data/synthetic/syntetic_data_normal_test.pt", normalize=True)
 
     visualize_n_samples(X_test, y_test, n=15, file_name="nf_test_samples.pdf")
+   
+    num_classes = int(y_train.max().item() + 1)
 
-    model = model_class(**kwargs)
+  
+
+    X_train = X_train.view(X_train.size(0), -1)
+    X_test  = X_test.view(X_test.size(0), -1)
+    D = X_train.size(1)
+    model = model_class(dim=D, num_classes=num_classes, **kwargs)
+
     model.train_function(X_train, y_train, X_test, y_test, num_epochs=num_epochs, device=device, batch_size=batch_size)
-
     generated_images = model.generate_dataset(num_samples=500, device=device)
     visualize_n_samples(generated_images, n=5, file_name="nf_generated_samples.pdf")
 
