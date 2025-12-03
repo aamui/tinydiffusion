@@ -128,8 +128,8 @@ class NormalizingFlow(Model):
         """
         return self.flow(x, reverse=reverse)
 
-    def train_nf(self, X_train, X_test,
-                 num_epochs=10, device='cpu', batch_size=512):
+    def train_function(self, X_train, X_test,
+                 num_epochs=10, device='cpu', batch_size=512, checkpoint_dir='checkpoints'):
 
         self.flow.to(device).train()
 
@@ -182,13 +182,10 @@ class NormalizingFlow(Model):
             avg_v = sum(v_losses) / len(v_losses)
             print(f"[NF] Epoch {epoch+1} - train {avg_tr:.4f} | val {avg_v:.4f}")
 
+        torch.save(self.model.state_dict(), f"{checkpoint_dir}/normalizing_flow_epoch_{epoch+1}.pth")
         self.flow.to('cpu')
 
-    def generate_with_model(self, num_samples=5, device='cpu'):
-        """
-        base Gaussian에서 샘플링하고, flow를 거꾸로 통과시켜 x를 생성.
-        return: [num_samples, D]
-        """
+    def generate(self, num_samples=5, device='cpu'):
         self.flow.to(device).eval()
 
         D = self.dim
@@ -200,3 +197,18 @@ class NormalizingFlow(Model):
 
         self.flow.to('cpu')
         return x.cpu()
+
+    def generate_dataset(self, num_samples, device='cpu', 
+                         max_images_per_batch=2048):
+        generated_images = []
+
+        for batch_start in tqdm(range(0, num_samples, max_images_per_batch)):
+            batch_end = min(batch_start + max_images_per_batch, num_samples)
+            batch_size = batch_end - batch_start
+            batch_images = self.generate(
+                num_samples=batch_size, 
+                device=device
+            )
+            generated_images.append(batch_images)
+        
+        return torch.cat(generated_images, dim=0)

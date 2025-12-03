@@ -10,12 +10,8 @@ from synthetic_images import generate_synthetic_dataset, visualize_n_samples
 
 if __name__ == "__main__":
     device = 'mps' if torch.backends.mps.is_available() else ('cuda' if torch.cuda.is_available() else 'cpu')
-    X_train, y_train = generate_synthetic_dataset(500000, use_saved=False, save_path="./syntetic_data_normal_train.pt", normalize=True )
-    X_test, y_test = generate_synthetic_dataset(100000, use_saved=False, save_path="./syntetic_data_normal_test.pt", normalize=True)
-
-    # Pretrain AE
-    encoder = Encoder(in_ch=1, latent_ch=4)
-    decoder = Decoder(out_ch=1, latent_ch=4)
+    X_train, y_train = generate_synthetic_dataset(500000, use_saved=False, save_path="./data/syntetic_data_normal_train.pt", normalize=True )
+    X_test, y_test = generate_synthetic_dataset(100000, use_saved=False, save_path="./data/syntetic_data_normal_test.pt", normalize=True)
 
     model = LatentFlowMatching()
     model.train_autoencoder( X_train, X_test, num_epochs=150, device=device, batch_size=256)
