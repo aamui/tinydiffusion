@@ -5,6 +5,9 @@ import random
 from tqdm import tqdm
 from experiment_mnist_flow_matching import visualize_n_samples
 import os
+from scipy.stats import ks_2samp
+from skimage.measure import label, regionprops
+from skimage.morphology import skeletonize
 
 def check_for_availability(grid, p, orientation):
     if p[0] < 0 or p[0] >= grid.shape[0] or p[1] < 0 or p[1] >= grid.shape[1]:
@@ -53,9 +56,9 @@ def generate_synthetic_image():
     return image, points_counter
 
 
-def count_white_pixels(image_dataset):
+def count_white_pixels(image_dataset, threshold = 0.5):
     labels = []
-    binary_images = (image_dataset > 0.5).float()
+    binary_images = (image_dataset > threshold).float()
     for img in tqdm(binary_images):
         labels.append(int(torch.sum(img).item()))
     return labels
@@ -154,6 +157,19 @@ def evaluate_saved_model(model_class, checkpoint_path, test_size=100000, device=
     create_histogram(detected_counts, y_test)
     create_qq_plot(detected_counts, y_test)
 
+    real_data = y_test.numpy() if isinstance(y_test, torch.Tensor) else np.array(y_test)
+    fake_data = np.array(detected_counts)
+
+    ks_stat, p_value = ks_2samp(real_data, fake_data)
+
+    print(f"--- KS Test Results ---")
+    print(f"Statistic: {ks_stat:.4f}")
+    print(f"P-value: {p_value:.4e}")
+    if ks_stat < 0.05:
+        print("PASS: Model captures the distribution well.")
+    else:
+        print("FAIL: Significant difference in distributions.")
+
     return generated_images, detected_counts, y_test
 
 def sample_from_model(model_class, checkpoint_path, samples = 100, device = 'mps'):
@@ -163,3 +179,65 @@ def sample_from_model(model_class, checkpoint_path, samples = 100, device = 'mps
     samples_path = f'samples/{model_class.__name__}_samples.pt'
     torch.save(generated_images, samples_path)
     print(f'Samples saved to {samples_path}')
+
+def count_robust_worm_lengths(image_dataset, threshold=0.2, min_part_size=5):
+    """
+    1. Threshold low (0.2) to bridge gaps in the worm.
+    2. Skeletonize to fix thickness.
+    3. Remove 'dust' (components < 5 pixels).
+    4. Sum the remaining lengths.
+    """
+    robust_counts = []
+    
+    # Convert to numpy if needed
+    if isinstance(image_dataset, torch.Tensor):
+        image_dataset = image_dataset.cpu().numpy()
+        
+    for img in image_dataset:
+        # 1. Low Threshold to connect broken parts
+        binary = img > threshold
+        
+        # 2. Skeletonize FIRST (Fix thickness before measuring)
+        # Note: Skeletonize works on the full image, preserving connections
+        skeleton = skeletonize(binary)
+        
+        # 3. Label connected regions
+        labeled_img = label(skeleton, connectivity=2)
+        regions = regionprops(labeled_img)
+        
+        total_length = 0
+        for region in regions:
+            # 4. Filter out dust (keep anything that looks like a worm segment)
+            if region.area >= min_part_size:
+                total_length += region.area
+                
+        robust_counts.append(int(total_length))
+        
+    return robust_counts
+
+def evaluate_saved_model_threshold(model_class, checkpoint_path, test_size=100000, device='mps', num_visualize=15, threshold = 0.5):
+    X_test, y_test = generate_synthetic_dataset(test_size)
+    visualize_n_samples(X_test, y_test, n=num_visualize, file_name=f"test_samples_{model_class.__name__}_{threshold}.pdf", threshold = threshold)
+
+    model = model_class(load_from_path=checkpoint_path)
+    generated_images = model.generate_dataset(num_samples=test_size, device=device)
+    detected_counts = count_white_pixels(generated_images, threshold = threshold)
+    visualize_n_samples(generated_images, n=min(num_visualize, len(generated_images)), output_binarization=True, y_train=detected_counts, file_name=f"generated_samples_{model_class.__name__}_{threshold}.pdf", threshold = threshold)
+
+    create_histogram(detected_counts, y_test)
+    create_qq_plot(detected_counts, y_test)
+
+    real_data = y_test.numpy() if isinstance(y_test, torch.Tensor) else np.array(y_test)
+    fake_data = np.array(detected_counts)
+
+    ks_stat, p_value = ks_2samp(real_data, fake_data)
+
+    print(f"--- KS Test Results ---")
+    print(f"Statistic: {ks_stat:.4f}")
+    print(f"P-value: {p_value:.4e}")
+    if ks_stat < 0.05:
+        print("PASS: Model captures the distribution well.")
+    else:
+        print("FAIL: Significant difference in distributions.")
+
+    return generated_images, detected_counts, y_test
