@@ -56,17 +56,21 @@ if __name__ == "__main__":
     X_test  = X_test.view(X_test.size(0), -1)
 
     dim = X_train.size(1)  # 784
+    num_epochs = 150
     nf_model = NormalizingFlow(dim=dim, num_classes=10)
 
+   
     nf_model.train_function(
         X_train, y_train,
         X_test, y_test,
-        num_epochs=10,
-        device=device
+        num_epochs=num_epochs,
+        device=device,
+        model_name="mnist_nf"
     )
 
+    nf_model = NormalizingFlow(dim=dim, num_classes=10, load_from_path=f"./checkpoints/mnist_nf_epoch_{num_epochs}.pth")
     num_samples = 16
-    samples = nf_model.generate(num_samples=num_samples, device=device)  
+    samples = nf_model.generate_dataset(num_samples=num_samples, device=device)  
     samples = postprocess_y(samples)                 
     samples = samples.view(-1, 1, 28, 28)            
-    visualize_n_samples(samples, n=5, file_name="generated_samples.pdf")
+    visualize_n_samples(samples, n=5, file_name="mnist_nf_generated_samples.pdf")

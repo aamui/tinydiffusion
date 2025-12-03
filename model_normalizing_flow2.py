@@ -130,7 +130,7 @@ class NormalizingFlow(Model):
 
     def train_function(self, X_train, y_train, X_test, y_test,
                        num_epochs=10, device='cpu', batch_size=512,
-                       checkpoint_dir='checkpoints'):
+                       checkpoint_dir='checkpoints', model_name="conditional_nf"):
 
         self.flow.to(device).train()
 
@@ -188,29 +188,80 @@ class NormalizingFlow(Model):
 
         # flow만 저장
         torch.save(self.flow.state_dict(),
-                   f"{checkpoint_dir}/conditional_nf_epoch_{epoch+1}.pth")
+                   f"{checkpoint_dir}/{model_name}_epoch_{epoch+1}.pth")
         self.flow.to('cpu')
 
+    # def generate(self, num_samples=5, y=None, device='cpu'):
+    #     """
+    #     y: [B] labels or None.
+    #     If None, sample labels uniformly.
+    #     """
+    #     self.flow.to(device).eval()
+
+    #     if y is None:
+    #         y = torch.randint(0, self.num_classes, (num_samples,))
+    #     elif y.dim() == 0:
+    #         y = y.unsqueeze(0).repeat(num_samples)
+    #     else:
+    #         assert y.size(0) == num_samples
+
+    #     y_oh = self._one_hot(y).to(device)
+
+    #     D = self.dim
+    #     with torch.no_grad():
+    #         u = torch.randn(num_samples, D).to(device)
+    #         x, _ = self.flow(u, y=y_oh, reverse=True)
+
+    #     self.flow.to('cpu')
+    #     return x.cpu()
+    
     def generate(self, num_samples=5, y=None, device='cpu'):
         """
-        y: [B] labels or None.
+        y: [B] int labels or None.
         If None, sample labels uniformly.
         """
         self.flow.to(device).eval()
 
+        # y 정수 라벨 만들기 / 정리
         if y is None:
-            y = torch.randint(0, self.num_classes, (num_samples,))
+            y = torch.randint(0, self.num_classes, (num_samples,), device=device)
         elif y.dim() == 0:
-            y = y.unsqueeze(0).repeat(num_samples)
+            y = y.unsqueeze(0).repeat(num_samples).to(device)
         else:
             assert y.size(0) == num_samples
+            y = y.to(device)
 
-        y_oh = self._one_hot(y).to(device)
+        # ★ one-hot 으로 바꾸기
+        y_oh = self._one_hot(y).to(device)   # [B, num_classes]
 
         D = self.dim
         with torch.no_grad():
-            u = torch.randn(num_samples, D).to(device)
+            u = torch.randn(num_samples, D, device=device)
             x, _ = self.flow(u, y=y_oh, reverse=True)
 
         self.flow.to('cpu')
         return x.cpu()
+
+    def generate_dataset(self, num_samples, device='cpu',
+                         class_probs=None, batch_size=128):
+        self.flow.to(device).eval()
+        all_samples = []
+
+        if class_probs is not None:
+            class_probs = class_probs.to(device)
+
+        remaining = num_samples
+        while remaining > 0:
+            b = min(batch_size, remaining)
+
+            if class_probs is None:
+                y = torch.randint(0, self.num_classes, (b,), device=device)
+            else:
+                y = torch.multinomial(class_probs, b, replacement=True)
+
+            x = self.generate(b, device=device, y=y)  # y는 정수, 안에서 one-hot
+            all_samples.append(x.cpu())
+
+            remaining -= b
+
+        return torch.cat(all_samples, dim=0)
