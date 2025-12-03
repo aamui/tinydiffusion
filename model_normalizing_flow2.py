@@ -123,7 +123,6 @@ class NormalizingFlow(Model):
         return self.flow(x, y=y, reverse=reverse)
 
     def _one_hot(self, y):
-        # y: [B] int labels
         return torch.nn.functional.one_hot(
             y.long(), num_classes=self.num_classes
         ).float()
@@ -186,7 +185,6 @@ class NormalizingFlow(Model):
             avg_v = sum(v_losses) / len(v_losses)
             print(f"[NF] Epoch {epoch+1} - train {avg_tr:.4f} | val {avg_v:.4f}")
 
-        # flow만 저장
         torch.save(self.flow.state_dict(),
                    f"{checkpoint_dir}/conditional_nf_epoch_{epoch+1}.pth")
         self.flow.to('cpu')
