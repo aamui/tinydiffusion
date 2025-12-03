@@ -23,13 +23,13 @@ def load_mnist_datasets():
     return (X_train, y_train), (X_test, y_test)
 
 
-def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False, file_name="please_specify_filename.pdf"):
+def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False, file_name="please_specify_filename.pdf", threshold = 0.5):
     if not os.path.exists("plots"):
         os.makedirs("plots")
     file_name = os.path.join("plots", file_name)
 
     if output_binarization:
-        X_train = (X_train > 0.5).float()
+        X_train = (X_train > threshold).float()
 
     n_rows = max(1, (n + 4) // 5)
     fig, axes = plt.subplots(n_rows, 5, figsize=(15, 3 * n_rows))
