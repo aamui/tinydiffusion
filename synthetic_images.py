@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import random
 from tqdm import tqdm
 from experiment_mnist_flow_matching import visualize_n_samples
-
+import os
 
 def check_for_availability(grid, p, orientation):
     if p[0] < 0 or p[0] >= grid.shape[0] or p[1] < 0 or p[1] >= grid.shape[1]:
@@ -80,6 +80,32 @@ def generate_synthetic_dataset_channel_normalize(num_samples):
     img = torch.tensor(np.array(images)).unsqueeze(1)
     img = (img - 0.5) / 0.5
     return img, torch.tensor(np.array(labels))
+
+def generate_synthetic_dataset(num_samples, use_saved=False, save_path="synthetic_dataset.pt", normalize=False):
+    if use_saved and os.path.exists(save_path):
+        print(f"Loading saved dataset from {save_path}")
+        data = torch.load(save_path)
+        return data["images"], data["labels"]
+
+    images = []
+    labels = []
+
+    for _ in tqdm(range(num_samples)):
+        img, label = generate_synthetic_image()
+        images.append(img)
+        labels.append(label)
+
+    images = torch.tensor(np.array(images))    
+    labels = torch.tensor(np.array(labels))    
+
+    if normalize:  
+        images = (images - 0.5) / 0.5     
+
+
+    torch.save({"images": images, "labels": labels}, save_path)
+    print(f"Saved dataset to {save_path}")
+
+    return images, labels
 
 def create_histogram(detected_counts, y_test):
     plt.figure()
