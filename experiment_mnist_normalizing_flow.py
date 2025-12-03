@@ -3,7 +3,6 @@ import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-from model_latent_flow_matching import Encoder, Decoder
 from model_normalizing_flow import NormalizingFlow
 
 def load_mnist_datasets():
