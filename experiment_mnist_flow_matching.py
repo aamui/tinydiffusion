@@ -39,6 +39,14 @@ def visualize_n_samples(X_train, y_train=None, n=5, output_binarization=False, f
 
     for i in range(n):
         image = X_train[i]
+        
+        if image.ndim == 1 and image.numel() == 28 * 28:
+            image = image.view(28, 28)
+        elif image.ndim == 2 and image.shape == (28 * 28, 1):
+            image = image.view(28, 28)
+        elif image.ndim == 3 and image.shape[0] == 1:
+            image = image.squeeze(0)
+        
         label = y_train[i] if y_train is not None else "Unknown"
         axes[i // 5, i % 5].imshow(image.squeeze(), cmap='gray')
         axes[i // 5, i % 5].set_title(f'Label: {label}')

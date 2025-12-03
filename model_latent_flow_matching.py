@@ -242,7 +242,7 @@ class LatentFlowMatching(Model):
 
             avg_v = sum(v_losses) / len(v_losses)
             print(f"[LFM] Epoch {epoch+1} - train {avg_tr:.4f} | val {avg_v:.4f}")
-        torch.save(self.model.state_dict(), f"{checkpoint_dir}/{model_name}_{epoch+1}.pth")
+        torch.save(self.model.state_dict(), f"{checkpoint_dir}/{model_name}_epoch_{epoch+1}.pth")
         self.model.to('cpu')
 
     # def generate_with_model(self, num_samples=5, number_of_steps=100,

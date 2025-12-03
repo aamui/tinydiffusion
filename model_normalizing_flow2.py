@@ -105,6 +105,19 @@ class NormalizingFlow(Model):
     def __init__(self, dim=784, num_classes=10,
                  hidden_dim=1024, num_flows=8, load_from_path=None):
         super().__init__()
+
+        state = None
+        if load_from_path is not None:
+            state = torch.load(load_from_path, map_location="cpu")
+            dim_state = state["couplings.0.mask"].shape[0]
+
+            in_dim = state["couplings.0.net.0.weight"].shape[1]
+            cond_dim_state = in_dim - dim_state  # = num_classes
+
+            dim = dim_state
+            num_classes = cond_dim_state
+            print(f"[NF] Inferred dim={dim}, num_classes={num_classes} from checkpoint")
+
         self.dim = dim
         self.num_classes = num_classes
 
@@ -115,9 +128,10 @@ class NormalizingFlow(Model):
             num_flows=num_flows
         )
 
-        if load_from_path is not None:
-            state = torch.load(load_from_path, map_location="cpu")
+        if state is not None:
             self.flow.load_state_dict(state)
+            print(f"[NF] Loaded flow weights from {load_from_path}")
+
 
     def forward(self, x, y=None, reverse=False):
         return self.flow(x, y=y, reverse=reverse)
@@ -229,7 +243,6 @@ class NormalizingFlow(Model):
             assert y.size(0) == num_samples
             y = y.to(device)
 
-        # ★ one-hot 으로 바꾸기
         y_oh = self._one_hot(y).to(device)   # [B, num_classes]
 
         D = self.dim

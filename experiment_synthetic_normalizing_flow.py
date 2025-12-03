@@ -41,11 +41,11 @@ else: device = "cpu"
 #     visualize_n_samples(samples_img, n=5, output_binarization=True, file_name="syn_nf_generated_samples.pdf")
 
 if __name__ == "__main__":
-    print(f"Using device: {device}")
-    training_pipeline_nf(NormalizingFlow, num_epochs=100, device=device, batch_size=256)
+    device = 'mps' if torch.backends.mps.is_available() else ('cuda' if torch.cuda.is_available() else 'cpu')
+    training_pipeline_nf(NormalizingFlow, num_epochs=150, device=device, batch_size=256)
 
     print("Training completed, waiting before evaluation...")
     time.sleep(2)
     print("Starting evaluation...")
 
-    evaluate_saved_model(NormalizingFlow, checkpoint_path='checkpoints/eval_syn_nf_epoch_10.pth', test_size=10000, device=device, num_visualize=15)
+    evaluate_saved_model(NormalizingFlow, checkpoint_path='checkpoints/eval_syn_nf_epoch_150.pth', test_size=10000, device=device, num_visualize=15)

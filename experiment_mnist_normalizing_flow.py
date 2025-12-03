@@ -56,7 +56,7 @@ if __name__ == "__main__":
     X_test  = X_test.view(X_test.size(0), -1)
 
     dim = X_train.size(1)  # 784
-    num_epochs = 150
+    num_epochs = 10
     nf_model = NormalizingFlow(dim=dim, num_classes=10)
 
    
